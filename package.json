@@ -14,6 +14,7 @@
 		"lint": "prettier --check . && eslint .",
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run",
+		"import:pdfs": "node src/scripts/import-pdfs-sqlite.js",
 		"tauri": "tauri",
 		"tauri:dev": "tauri dev",
 		"tauri:build": "tauri build"
@@ -36,6 +37,7 @@
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.12.4",
 		"globals": "^16.4.0",
+		"pdfjs-dist": "^5.4.296",
 		"playwright": "^1.55.1",
 		"prettier": "^3.6.2",
 		"prettier-plugin-svelte": "^3.4.0",
@@ -48,5 +50,9 @@
 		"vite": "^7.1.7",
 		"vitest": "^3.2.4",
 		"vitest-browser-svelte": "^1.1.0"
+	},
+	"dependencies": {
+		"@tauri-apps/plugin-sql": "^2.3.0",
+		"better-sqlite3": "^12.4.1"
 	}
 }
