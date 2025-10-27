@@ -58,8 +58,8 @@ function getDbPath() {
   } else if (platform === 'win32') {
     dataDir = path.join(process.env.APPDATA || path.join(homedir(), 'AppData', 'Roaming'), 'com.tauri.dev');
   } else {
-    // Linux
-    dataDir = path.join(process.env.XDG_DATA_HOME || path.join(homedir(), '.local', 'share'), 'com.tauri.dev');
+    // Linux - Tauri uses .config in dev mode
+    dataDir = path.join(homedir(), '.config', 'com.tauri.dev');
   }
   
   return path.join(dataDir, 'pdfsearch.db');
@@ -220,7 +220,7 @@ async function importPdfs() {
     console.log('Base directory:', baseDir);
     
     // Specify the subject folders we're looking for
-    const subjectFolders = ['Program Languages', 'NonFiction', 'Jung'];
+    const subjectFolders = ['Codoh','Program Languages', 'NonFiction', 'Jung'];
     const subjects = [];
     
     // Check if each subject folder exists

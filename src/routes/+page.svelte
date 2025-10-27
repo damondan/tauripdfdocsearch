@@ -10,8 +10,7 @@
   import type { ISearchData } from "$lib";
 
   let selectedSubject = $state("");
-  let { data }: { data: { dataPdfSubjects: string[] } } = $props();
-  let setDataPdfSubjects: string[] = data.dataPdfSubjects;
+  let setDataPdfSubjects: string[] = $state([]);
   let pdfBooksGetFromSubject: Writable<string[]> = writable([]);
   let pdfBookCheckFromPdfTab: string[] = $state([]);
   let mySearchData = $state<ISearchData | string>({
@@ -28,15 +27,20 @@
   let pdfLimit: number = 25;
   let totalCount = $derived(pdfBooksAsResultObjects.length);
 
-  // onMount - receives passed { data } = $props(); from +page.server.js - setDataPdfSubjects
-  // - these are Pdf subjects and the first in the array is chosen to call the async
-  // function handleLoadPdfTitlesFromSubject(selectedSubject)
-  onMount(() => {
-    if (setDataPdfSubjects.length > 0) {
-      console.log("In onMount");
-      selectedSubject = setDataPdfSubjects[0]; // Set default to the first subject
-      // Automatically trigger the fetch for the first subject
-      handleLoadPdfTitlesFromSubject(selectedSubject);
+  // onMount - Load subjects from Tauri DB and initialize
+  onMount(async () => {
+    try {
+      const { getSubjects } = await import('$lib/tauri-db');
+      setDataPdfSubjects = await getSubjects();
+      
+      if (setDataPdfSubjects.length > 0) {
+        console.log("In onMount, subjects loaded:", setDataPdfSubjects);
+        selectedSubject = setDataPdfSubjects[0]; // Set default to the first subject
+        // Automatically trigger the fetch for the first subject
+        handleLoadPdfTitlesFromSubject(selectedSubject);
+      }
+    } catch (error) {
+      console.error('Error loading subjects:', error);
     }
   });
 
@@ -281,11 +285,11 @@ min-h-screen relative [grid-template-areas:'routing_routing_routing'_'header_hea
         id="download-id"
         value="Download"
         onclick={handleDownloadPdfsForPdfBlock}
-        class="text-base sm:text-lg md:text-xl lg:text-2xl text-white px-4 py-2 cursor-pointer border-[#333333]
+        class="!text-base sm:!text-lg md:!text-xl lg:!text-2xl text-white px-4 py-2 cursor-pointer border-[#333333]
         bg-[#3e228c] hover:bg-[#3206de] rounded-md ml-5 mb-1 font-comic shadow-soft"
       />
       <div class="total-count w-auto sm:w-36 h-auto sm:h-10 ml-5 sm:ml-0 rounded-md">
-        <p class="w-full text-black font-comic font-light text-base sm:text-lg md:text-xl lg:text-2xl text-left sm:text-center
+        <p class="w-full text-black font-comic font-light !text-base sm:!text-lg md:!text-xl lg:!text-2xl text-left sm:text-center
            overflow-visible whitespace-nowrap m-0">
           Results {totalCount}
         </p>
@@ -304,11 +308,10 @@ min-h-screen relative [grid-template-areas:'routing_routing_routing'_'header_hea
       />
     </div>
   {/if}
-  <div class="header [grid-area:header] text-blue-500 text-center">
+  <div class="header [grid-area:header] text-center">
     <h1
-      class="font-comic text-6xl text-white tracking-wider font-normal"
-      style="text-shadow: 0px 8px 8px rgba(0, 0, 0, 0.3);"
-    >
+      class="font-comic !text-6xl text-red-500 tracking-wider font-normal"
+      style="text-shadow: 0px 8px 8px rgba(0, 0, 0, 0.3);">
       Pdf Search TS
     </h1>
     <SearchBar
@@ -331,12 +334,12 @@ min-h-screen relative [grid-template-areas:'routing_routing_routing'_'header_hea
       <label
         for="pdf-options"
         id="pdf-label"
-        class="pdf-label self-start mb-1 text-center w-full text-xl font-black
+        class="pdf-label self-start mb-1 text-center w-full !text-xl font-black
            font-comic tracking-wider2 text-gray-900">PDF Subjects:</label
       >
       <select
         onchange={handleSubjectChange}
-        class="w-full p-1 border border-gray-300 rounded-md bg-gray-100 text-base sm:text-lg md:text-xl lg:text-2xl font-comic"
+        class="w-full p-1 border border-gray-300 rounded-md bg-gray-100 !text-base sm:!text-lg md:!text-xl lg:!text-2xl font-comic"
       >
         <!-- <option value="" disabled>Select a subject</option> -->
         {#each setDataPdfSubjects as pdfSubject}
@@ -355,12 +358,12 @@ min-h-screen relative [grid-template-areas:'routing_routing_routing'_'header_hea
   >
     <div class="w3-row w-full rounded-md" role="tablist">
       <button type="button" onclick={() => openTab("pdfs")} role="tab" aria-selected={activeTab === "pdfs"} class="w3-half tablink w3-bottombar w3-hover-light-grey w3-padding
-          w-1/2 rounded-md text-base sm:text-lg md:text-xl lg:text-2xl font-comic tracking-wider2 font-normal bg-white
+          w-1/2 rounded-md !text-base sm:!text-lg md:!text-xl lg:!text-2xl font-comic tracking-wider2 font-normal bg-white
           text-center {activeTab === 'pdfs' ? 'active w3-border-green' : ''}">
           Pdfs
       </button>
       <button type="button" onclick={() => openTab("results")} role="tab" aria-selected={activeTab === "results"} class="w3-half tablink w3-bottombar w3-hover-light-grey w3-padding
-          w-1/2 rounded-md text-base sm:text-lg md:text-xl lg:text-2xl font-comic tracking-wider2 font-normal bg-white
+          w-1/2 rounded-md !text-base sm:!text-lg md:!text-xl lg:!text-2xl font-comic tracking-wider2 font-normal bg-white
           text-center {activeTab === 'results' ? 'active w3-border-green' : ''}">
           Results
       </button>
@@ -389,7 +392,7 @@ min-h-screen relative [grid-template-areas:'routing_routing_routing'_'header_hea
               />
               <label
                 for={title}
-                class="pdf-title-label text-base sm:text-lg md:text-xl lg:text-2xl font-bold font-comic tracking-wider2 break-words overflow-wrap-anywhere leading-tight flex-1 cursor-pointer min-w-0 max-w-full overflow-hidden"
+                class="pdf-title-label !text-base sm:!text-lg md:!text-xl lg:!text-2xl font-bold font-comic tracking-wider2 break-words overflow-wrap-anywhere leading-tight flex-1 cursor-pointer min-w-0 max-w-full overflow-hidden"
                 >{title}</label
               >
             </li>

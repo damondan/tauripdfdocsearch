@@ -6,6 +6,7 @@ let db: Database | null = null;
 async function getDb(): Promise<Database> {
   if (!db) {
     db = await Database.load('sqlite:pdfsearch.db');
+    console.log('✅ Database connected successfully');
   }
   return db;
 }
@@ -14,10 +15,14 @@ async function getDb(): Promise<Database> {
  * Get all distinct subjects from the database
  */
 export async function getSubjects(): Promise<string[]> {
+  console.log('🔍 getSubjects called');
   const database = await getDb();
+  console.log('📊 Running query: SELECT DISTINCT subject FROM books ORDER BY subject');
   const result = await database.select<Array<{subject: string}>>(
     'SELECT DISTINCT subject FROM books ORDER BY subject'
   );
+  console.log('📚 Query result:', result);
+  console.log('📚 Subjects loaded:', result.map(row => row.subject));
   return result.map(row => row.subject);
 }
 

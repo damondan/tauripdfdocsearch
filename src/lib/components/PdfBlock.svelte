@@ -51,7 +51,7 @@
 			handleCheckboxChangeDispatch(e);
 		}}
 	/>
-	<p class="m-0 px-3 overflow-hidden break-words whitespace-normal text-base sm:text-lg md:text-xl lg:text-2xl font-bold font-comic tracking-wider2">{result.bookTitle} {result.pageNum} {result.sentence}</p>
+	<p class="m-0 px-3 overflow-hidden break-words whitespace-normal !text-base sm:!text-lg md:!text-xl lg:!text-2xl font-bold font-comic tracking-wider2">{result.bookTitle} {result.pageNum} {result.sentence}</p>
 	<button
 		class="pdf-delete w-5 h-5 p-0 text-xs leading-5 text-center bg-red-500 hover:bg-red-700 text-white border-none rounded cursor-pointer"
 		onclick={(e) => {
@@ -61,7 +61,7 @@
 	>
 	{#if isExpanded}
 		<div class="pdf-page-text col-span-full w-full mt-3 bg-red-100 p-3">
-			<p class="m-0 break-words whitespace-normal overflow-visible text-base sm:text-lg md:text-xl lg:text-2xl font-comic">{result.pageText || "No text available"}</p>
+			<p class="m-0 break-words whitespace-normal overflow-visible !text-base sm:!text-lg md:!text-xl lg:!text-2xl font-comic">{result.pageText || "No text available"}</p>
 		</div>
 	{/if}
 </div>

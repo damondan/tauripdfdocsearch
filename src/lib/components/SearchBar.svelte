@@ -164,12 +164,12 @@
 		onclick={handleInputClick}
 		onkeydown={handleInputKeydown}
 		autocomplete="off"
-	class="flex-grow font-comic text-base sm:text-lg md:text-xl lg:text-2xl text-black p-2 border border-gray-300 rounded"/>
+	class="flex-grow font-comic !text-base sm:!text-lg md:!text-xl lg:!text-2xl text-black p-2 border border-gray-300 rounded"/>
 
 	<!-- Search Button -->
 	<button 
 		onclick={handleSearchDispatch}
-	class="bg-blue-600 hover:bg-blue-800 text-white px-3 py-2 rounded font-comic text-base sm:text-lg md:text-xl lg:text-2xl shadow-soft cursor-pointer"
+	class="bg-blue-600 hover:bg-blue-800 text-white px-3 py-2 rounded font-comic !text-base sm:!text-lg md:!text-xl lg:!text-2xl shadow-soft cursor-pointer"
 	>Search</button>
 
 	{#if loading}
