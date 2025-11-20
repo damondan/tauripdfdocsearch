@@ -22,7 +22,7 @@
   let pdfBooksRetFromSearch: any = undefined;
   let pdfBooksAsResultObjects: PdfBookResult[] = $state([]);
   let activeTab: string = $state("pdfs");
-  let checkedResults: PdfBookResult[] = [];
+  let checkedResults: PdfBookResult[] = $state([]);
   let isCheckAll: boolean = $state(false);
   let pdfLimit: number = 25;
   let totalCount = $derived(pdfBooksAsResultObjects.length);
@@ -79,26 +79,51 @@
     }
   }
 
-  //This refers to the spinner - it is an event listener for the +page.svelte component
-  //or parent that is set in the SearchBar component below - on:loadingChange={handleLoadingChange}
-  //SearchBar component dispatches - dispatch('loadingChange', loading); loading is a boolean.
+  //This refers to the spinner - it is a callback for the +page.svelte component
+  //or parent that is set in the SearchBar component below - onloadingChange={handleLoadingChange}
+  //SearchBar component calls - onloadingChange?.(loading); loading is a boolean.
   //Below there is an - if isLoading is true or false which displays the spinner.
-  function handleLoadingChange(event: CustomEvent<boolean>): void {
-    isLoading = event.detail;
+  function handleLoadingChange(loading: boolean): void {
+    isLoading = loading;
   }
 
-  //This is also an event listener for +page.svelte or the parent component to the
-  //SearchBar child component. SearchBar below on:searchResults={handleLoadPdfDataFromPdfTab}.
-  //In SearchBar component - dispatch('searchResults', result);
+  //cleanTextSpacing(text: string): string
+  //Cleans up spacing issues in PDF extracted text by:
+  //1. Removing extra spaces between single characters and word parts (e.g., "w ithout" -> "without")
+  //2. Collapsing multiple consecutive spaces into a single space
+  function cleanTextSpacing(text: string): string {
+    if (!text) return text;
+    
+    // First, fix single character followed by space then word continuation
+    // Pattern: looks for a single letter/character followed by space and then more letters
+    // Example: "w ithout" -> "without", "h ow" -> "how"
+    let cleaned = text.replace(/\b(\w)\s+(?=\w)/g, (match, char, offset, string) => {
+      // Check if this is likely a broken word (single char followed by lowercase letter)
+      const nextChar = string[offset + match.length];
+      if (nextChar && nextChar === nextChar.toLowerCase() && char.length === 1) {
+        return char; // Remove the space
+      }
+      return match; // Keep the space (it's a normal word boundary)
+    });
+    
+    // Second, collapse multiple consecutive spaces into a single space
+    cleaned = cleaned.replace(/\s{2,}/g, ' ');
+    
+    return cleaned.trim();
+  }
+
+  //This is a callback for +page.svelte or the parent component to the
+  //SearchBar child component. SearchBar below onsearchResults={handleLoadPdfDataFromPdfTab}.
+  //In SearchBar component - onsearchResults?.(result);
   //The result is passed as searchResults and when that variable is set with the results,
-  //it executes the below function through it being used as an event listener with the data
+  //it executes the below function through it being used as a callback with the data
   //in results. mySearchData, being json data, is taken in by mySearchData, which uses 2
   //interfaces to configure with the json data. Lastly, it steps through the array to
   //input the pdf attributes into creating a PdfBookResult object that is than stored into
   //a pdfBooksAsResultObjects array.
   // Replace the existing handleLoadPdfDataFromPdfTab function with this updated version:
-  function handleLoadPdfDataFromPdfTab(event: CustomEvent): void {
-    mySearchData = event.detail;
+  function handleLoadPdfDataFromPdfTab(data: ISearchData | string): void {
+    mySearchData = data;
     console.log(
       "Received search results in parent(mySearchData):",
       mySearchData,
@@ -137,13 +162,15 @@
           const matches = mySearchData.results[pdfBooksRetFromSearch[i]];
 
           for (const { pageNum, text } of matches) {
-            const sentence = findSentenceForPdfPage(text, $searchQueryWritable);
+            const cleanedText = cleanTextSpacing(text);
+            const sentence = findSentenceForPdfPage(cleanedText, $searchQueryWritable);
+            const cleanedSentence = cleanTextSpacing(sentence);
             pdfBooksAsResultObjects.push(
               new PdfBookResult(
                 pdfBooksRetFromSearch[i],
                 pageNum,
-                sentence,
-                text,
+                cleanedSentence,
+                cleanedText,
               ),
             );
           }
@@ -159,14 +186,23 @@
 
   //In clicking the Download button displayed in the Results tab, this function is executed. The checkedResults
   //data is initialized through the handleCheckboxChangeForPdfBlock function below. handleCheckboxChangeForPdfBlock is
-  //an event listener for the +page.svelte component or parent to the PdfBlock component or child.
-  //Below -> <PdfBlock {result} on:delete={handleDeleteForPdfBlock} on:change={(e) => handleCheckboxChangeForPdfBlock(result, e)}
+  //a callback for the +page.svelte component or parent to the PdfBlock component or child.
+  //Below -> <PdfBlock {result} ondelete={handleDeleteForPdfBlock} onchange={(result, checked) => handleCheckboxChangeForPdfBlock(result, checked)}
   //checkedResults is formatted below to set the downloaded text in a more readable manner.
-  function handleDownloadPdfsForPdfBlock(): void {
+  async function handleDownloadPdfsForPdfBlock(): Promise<void> {
     console.log("In handleDownloadPdfsForPdfBlock");
+    console.log("checkedResults length:", checkedResults.length);
+    console.log("checkedResults:", checkedResults);
+    
+    if (checkedResults.length === 0) {
+      alert("Please select at least one PDF block to download");
+      return;
+    }
+    
     const today = new Date().toISOString().split("T")[0];
+    const defaultFilename = `${$searchQueryWritable}-${today}-docsveltedwnld.txt`;
 
-    const checkedResultsBlob = checkedResults
+    const checkedResultsContent = checkedResults
       .map(
         (result) =>
           `${result.bookTitle}, Page ${result.pageNum}: ${result.sentence}\n\n` +
@@ -174,17 +210,29 @@
       )
       .join("\n");
 
-    const blob = new Blob([checkedResultsBlob], { type: "text/plain" });
-    const url = window.URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${$searchQueryWritable}-${today}-docsveltedwnld.txt`;
-    document.body.appendChild(link);
-    link.click();
-
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    console.log("Download content length:", checkedResultsContent.length);
+    
+    try {
+      const { save } = await import('@tauri-apps/plugin-dialog');
+      const { writeTextFile } = await import('@tauri-apps/plugin-fs');
+      
+      const filePath = await save({
+        defaultPath: defaultFilename,
+        filters: [{
+          name: 'Text',
+          extensions: ['txt']
+        }]
+      });
+      
+      if (filePath) {
+        await writeTextFile(filePath, checkedResultsContent);
+        console.log('File saved successfully to:', filePath);
+        alert('File downloaded successfully!');
+      }
+    } catch (error) {
+      console.error('Error saving file:', error);
+      alert('Error saving file: ' + error);
+    }
   }
 
   //Used in handleLoadPdfDataFromPdfTab(event) to return the sentence within the page which
@@ -206,33 +254,33 @@
     }
   };
 
-  //handleCheckboxChangeForPdfBlock is an event listener for the +page.svelte component
+  //handleCheckboxChangeForPdfBlock is a callback for the +page.svelte component
   //or parent to the PdfBlock component or child.
-  //Below -> <PdfBlock {result} on:delete={handleDeleteForPdfBlock}
-  //on:change={(e) => handleCheckboxChangeForPdfBlock(result, e)}
-  //The parent listens for a dipatch from PdfBlock -> dispatch('change', { result, checked });
+  //Below -> <PdfBlock {result} ondelete={handleDeleteForPdfBlock}
+  //onchange={(result, checked) => handleCheckboxChangeForPdfBlock(result, checked)}
+  //The parent receives callback from PdfBlock -> onchange(result, checked);
   //checkedResults is set with the proper array of PdfBookResult which has been checked
   //in the Results tab.
   function handleCheckboxChangeForPdfBlock(
     result: PdfBookResult,
-    event: CustomEvent,
+    checked: boolean,
   ): void {
-    console.log("IN handleCheckboxChangeForPdfBlock");
-    result.isChecked = event.detail.checked;
-    console.log("result is ", result);
+    console.log("[+page] IN handleCheckboxChangeForPdfBlock");
+    console.log("[+page] result param:", result);
+    console.log("[+page] checked param:", checked);
+    result.isChecked = checked;
+    console.log("[+page] result.isChecked set to:", result.isChecked);
 
-    if (event.detail.checked) {
-      checkedResults.push(result);
-      console.log("checkedResults adding ", checkedResults);
+    if (checked) {
+      checkedResults = [...checkedResults, result];
+      console.log("[+page] checkedResults adding ", checkedResults);
     } else {
       checkedResults = checkedResults.filter((r) => r !== result);
-      console.log("checkedResults deleting ", checkedResults);
+      console.log("[+page] checkedResults deleting ", checkedResults);
     }
 
-    console.log("Checked results:", checkedResults);
-    for (let i = 0; i < checkedResults.length; i++) {
-      console.log("Number " + i + " " + checkedResults[i]);
-    }
+    console.log("[+page] Checked results:", checkedResults);
+    console.log("[+page] Checked results length:", checkedResults.length);
   }
 
   //This checks all of the pdf book titles from the pdf tab.
@@ -262,10 +310,9 @@
     isCheckAll = isAllChecked;
   });
 
-  function handleDeleteForPdfBlock(event: CustomEvent): void {
-    const resultToDelete = event.detail; // Assuming PdfBlock emits the result
+  function handleDeleteForPdfBlock(result: PdfBookResult): void {
     pdfBooksAsResultObjects = pdfBooksAsResultObjects.filter(
-      (r) => r !== resultToDelete,
+      (r) => r !== result,
     );
   }
 </script>
@@ -317,8 +364,8 @@ min-h-screen relative [grid-template-areas:'routing_routing_routing'_'header_hea
     <SearchBar
       {selectedSubject}
       pdfBookTitles={pdfBookCheckFromPdfTab}
-      on:searchResults={handleLoadPdfDataFromPdfTab}
-      on:loadingChange={handleLoadingChange}
+      onsearchResults={handleLoadPdfDataFromPdfTab}
+      onloadingChange={handleLoadingChange}
     />
     {#if isLoading}
       <div class="spinner-overlay tw-spinner-overlay">
@@ -409,8 +456,8 @@ min-h-screen relative [grid-template-areas:'routing_routing_routing'_'header_hea
       {#each pdfBooksAsResultObjects as result}
         <PdfBlock
           {result}
-          on:delete={handleDeleteForPdfBlock}
-          on:change={(e) => handleCheckboxChangeForPdfBlock(result, e)}
+          ondelete={handleDeleteForPdfBlock}
+          onchange={(r, checked) => handleCheckboxChangeForPdfBlock(r, checked)}
         />
       {/each}
     </div>

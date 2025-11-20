@@ -1,17 +1,15 @@
 <script lang="ts">
 	import { browser } from "$app/environment";
-	import { createEventDispatcher } from "svelte";
 	import {
 		previousSearchesWritable,
 		searchQueryWritable,
 	} from "$lib/store.js";
 
 	let searchQuery: string = $state("");
-	let { selectedSubject, pdfBookTitles } = $props();
+	let { selectedSubject, pdfBookTitles, onsearchResults, onloadingChange } = $props();
 	let showDropdown = $state(false);
 	let loading: boolean = $state(false);
 	const pdfLimit: number = 40;
-	const dispatch = createEventDispatcher();
 
 	// THis is a dispatch to the parent +page.svelte.
 	// Replace the existing handleSearchDispatch function with this updated version:
@@ -32,26 +30,26 @@
 		// Check if both search query and PDFs are missing
 		if (!searchQuery.trim() && normPdfTitles.length == 0) {
 			console.error("Both search query and PDFs are missing");
-			dispatch("searchResults", "noSearchTermAndNoPdfs");
+			onsearchResults?.("noSearchTermAndNoPdfs");
 			return;
 		}
 
 		// Check if no PDFs are selected (but search query exists)
 		if (normPdfTitles.length == 0) {
-			dispatch("searchResults", "noPdfCheckBoxesChecked");
+			onsearchResults?.("noPdfCheckBoxesChecked");
 			return;
 		}
 
 		// Check if PDFs are selected but no search query is provided
 		if (!searchQuery.trim()) {
 			console.error("Search query is empty but PDFs are selected");
-			dispatch("searchResults", "noSearchTerm");
+			onsearchResults?.("noSearchTerm");
 			return;
 		}
 
 		// Check if too many PDFs are selected
 		if (normPdfTitles.length > pdfLimit) {
-			dispatch("searchResults", "pdfsOverLimit");
+			onsearchResults?.("pdfsOverLimit");
 			return;
 		}
 
@@ -66,7 +64,7 @@
 
 		try {
 			loading = true;
-			dispatch("loadingChange", loading);
+			onloadingChange?.(loading);
 
 			const { searchPages } = await import('$lib/tauri-db');
 			const result = await searchPages(
@@ -78,8 +76,8 @@
 			console.log("Search results:", result);
 
 			loading = false;
-			dispatch("loadingChange", loading);
-			dispatch("searchResults", result);
+			onloadingChange?.(loading);
+			onsearchResults?.(result);
 
 			// Clear input and hide dropdown after successful search
 			searchQuery = "";
@@ -87,7 +85,7 @@
 		} catch (error) {
 			console.error("Error in handleSearch:", error);
 			loading = false;
-			dispatch("loadingChange", loading);
+			onloadingChange?.(loading);
 		}
 	}
 

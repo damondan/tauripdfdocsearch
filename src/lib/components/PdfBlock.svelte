@@ -1,9 +1,6 @@
 <script lang="ts">
-	import { createEventDispatcher } from "svelte";
-
-	let { result } = $props();
+	let { result, ondelete, onchange } = $props();
 	let isExpanded: boolean = $state(false);
-	const dispatch = createEventDispatcher();
 	let checked = $derived(result?.isChecked ?? false);
 
 	//If the clicked element is inside the .pdf-checkbox - returns without expansion of the page text
@@ -16,17 +13,24 @@
 		isExpanded = !isExpanded;
 	}
 
-	// This is a dispatch which returns result && checked to the parent +page.svelte main page.
-	function handleCheckboxChangeDispatch(event: CustomEvent) {
-		console.log("in handleCheckboxChangeDispatch");
+	// This is a callback which returns result && checked to the parent +page.svelte main page.
+	function handleCheckboxChangeDispatch(event: Event) {
+		console.log("[PdfBlock] in handleCheckboxChangeDispatch");
 		const target = event.target as HTMLInputElement;
 		result.isChecked = target.checked;
-		dispatch("change", { result, checked });
+		console.log("[PdfBlock] Checkbox changed - result.isChecked:", result.isChecked);
+		console.log("[PdfBlock] onchange callback exists?", !!onchange);
+		if (onchange) {
+			console.log("[PdfBlock] Calling onchange callback with result:", result, "checked:", result.isChecked);
+			onchange(result, result.isChecked);
+		} else {
+			console.error("[PdfBlock] onchange callback is undefined!");
+		}
 	}
 
-	// This is a dispatch which returns result to the parent +page.svelte main page.
+	// This is a callback which returns result to the parent +page.svelte main page.
 	function handleDeleteDispatch() {
-		dispatch("delete", result); // Send the result object to the parent
+		ondelete?.(result); // Send the result object to the parent
 	}
 </script>
 
@@ -44,11 +48,20 @@
 >
 	<input
 		type="checkbox"
-		bind:checked={result.isChecked}
+		checked={result.isChecked}
 		class="pdf-checkbox w-4 h-4 mx-3 pr-1 scale-150 cursor-pointer"
-		onchange={(e) => {
+		onclick={(e) => {
+			console.log("[PdfBlock] CHECKBOX CLICK EVENT FIRED!");
 			e.stopPropagation();
-			handleCheckboxChangeDispatch(e);
+			const target = e.target as HTMLInputElement;
+			result.isChecked = !result.isChecked;
+			console.log("[PdfBlock] New isChecked value:", result.isChecked);
+			if (onchange) {
+				console.log("[PdfBlock] Calling onchange");
+				onchange(result, result.isChecked);
+			} else {
+				console.error("[PdfBlock] onchange is undefined!");
+			}
 		}}
 	/>
 	<p class="m-0 px-3 overflow-hidden break-words whitespace-normal !text-base sm:!text-lg md:!text-xl lg:!text-2xl font-bold font-comic tracking-wider2">{result.bookTitle} {result.pageNum} {result.sentence}</p>
