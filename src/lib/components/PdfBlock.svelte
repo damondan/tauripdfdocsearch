@@ -1,7 +1,13 @@
 <script lang="ts">
-	let { result, ondelete, onchange } = $props();
+	import type { PdfBookResult } from "$lib/classes/PdfBookResult";
+	
+	let { result, ondelete, checkedGroup = $bindable() }: {
+		result: PdfBookResult;
+		ondelete?: (result: PdfBookResult) => void;
+		checkedGroup: PdfBookResult[];
+	} = $props();
+	
 	let isExpanded: boolean = $state(false);
-	let checked = $derived(result?.isChecked ?? false);
 
 	//If the clicked element is inside the .pdf-checkbox - returns without expansion of the page text
 	//Outside of that, the click expands the page text.
@@ -48,20 +54,11 @@
 >
 	<input
 		type="checkbox"
-		checked={result.isChecked}
+		bind:group={checkedGroup}
+		value={result}
 		class="pdf-checkbox w-4 h-4 mx-3 pr-1 scale-150 cursor-pointer"
 		onclick={(e) => {
-			console.log("[PdfBlock] CHECKBOX CLICK EVENT FIRED!");
 			e.stopPropagation();
-			const target = e.target as HTMLInputElement;
-			result.isChecked = !result.isChecked;
-			console.log("[PdfBlock] New isChecked value:", result.isChecked);
-			if (onchange) {
-				console.log("[PdfBlock] Calling onchange");
-				onchange(result, result.isChecked);
-			} else {
-				console.error("[PdfBlock] onchange is undefined!");
-			}
 		}}
 	/>
 	<p class="m-0 px-3 overflow-hidden break-words whitespace-normal !text-base sm:!text-lg md:!text-xl lg:!text-2xl font-bold font-comic tracking-wider2">{result.bookTitle} {result.pageNum} {result.sentence}</p>

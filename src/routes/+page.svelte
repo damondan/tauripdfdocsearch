@@ -23,7 +23,9 @@
   let pdfBooksAsResultObjects: PdfBookResult[] = $state([]);
   let activeTab: string = $state("pdfs");
   let checkedResults: PdfBookResult[] = $state([]);
+  let checkedResultsGroup: PdfBookResult[] = $state([]);
   let isCheckAll: boolean = $state(false);
+  let isCheckAllResults: boolean = $state(false);
   let pdfLimit: number = 25;
   let totalCount = $derived(pdfBooksAsResultObjects.length);
 
@@ -129,6 +131,12 @@
       mySearchData,
     );
 
+    // Clear checkedResults when a new search is performed
+    checkedResults = [];
+    checkedResultsGroup = [];
+    isCheckAllResults = false;
+    console.log("Cleared checkedResults for new search");
+
     // Type guard to check if it's a string
     if (typeof mySearchData === "string") {
       // Handle string cases
@@ -191,10 +199,10 @@
   //checkedResults is formatted below to set the downloaded text in a more readable manner.
   async function handleDownloadPdfsForPdfBlock(): Promise<void> {
     console.log("In handleDownloadPdfsForPdfBlock");
-    console.log("checkedResults length:", checkedResults.length);
-    console.log("checkedResults:", checkedResults);
+    console.log("checkedResultsGroup length:", checkedResultsGroup.length);
+    console.log("checkedResultsGroup:", checkedResultsGroup);
     
-    if (checkedResults.length === 0) {
+    if (checkedResultsGroup.length === 0) {
       alert("Please select at least one PDF block to download");
       return;
     }
@@ -202,7 +210,7 @@
     const today = new Date().toISOString().split("T")[0];
     const defaultFilename = `${$searchQueryWritable}-${today}-docsveltedwnld.txt`;
 
-    const checkedResultsContent = checkedResults
+    const checkedResultsContent = checkedResultsGroup
       .map(
         (result) =>
           `${result.bookTitle}, Page ${result.pageNum}: ${result.sentence}\n\n` +
@@ -302,6 +310,22 @@
     }
   }
 
+  //handleCheckAllResults(event: Event): void
+  //Handles checking/unchecking all PdfBlock results in the Results tab.
+  //Mirrors the approach used in the Pdfs tab with bind:group.
+  //When checked, all results are added to checkedResultsGroup.
+  //When unchecked, checkedResultsGroup is cleared.
+  function handleCheckAllResults(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    isCheckAllResults = target.checked;
+
+    if (isCheckAllResults) {
+      checkedResultsGroup = [...pdfBooksAsResultObjects];
+    } else {
+      checkedResultsGroup = [];
+    }
+  }
+
   let isAllChecked = $derived(
     pdfBookCheckFromPdfTab.length === $pdfBooksGetFromSubject.length &&
       $pdfBooksGetFromSubject.length > 0,
@@ -327,6 +351,13 @@ min-h-screen relative [grid-template-areas:'routing_routing_routing'_'header_hea
 >
   {#if activeTab == "results"}
     <div class="[grid-area:download-r-checkall-buttons] flex flex-col sm:flex-row justify-start items-start sm:items-end ml-[15%] pb-2 gap-2">
+      <input
+        type="checkbox"
+        id="checkall-results-id"
+        bind:checked={isCheckAllResults}
+        onchange={handleCheckAllResults}
+        class="w-5 h-5 scale-150 cursor-pointer ml-5 mb-2 shadow-soft"
+      />
       <input
         type="button"
         id="download-id"
@@ -361,12 +392,14 @@ min-h-screen relative [grid-template-areas:'routing_routing_routing'_'header_hea
       style="text-shadow: 0px 8px 8px rgba(0, 0, 0, 0.3);">
       Pdf Search TS
     </h1>
-    <SearchBar
-      {selectedSubject}
-      pdfBookTitles={pdfBookCheckFromPdfTab}
-      onsearchResults={handleLoadPdfDataFromPdfTab}
-      onloadingChange={handleLoadingChange}
-    />
+    {#if activeTab !== "results"}
+      <SearchBar
+        {selectedSubject}
+        pdfBookTitles={pdfBookCheckFromPdfTab}
+        onsearchResults={handleLoadPdfDataFromPdfTab}
+        onloadingChange={handleLoadingChange}
+      />
+    {/if}
     {#if isLoading}
       <div class="spinner-overlay tw-spinner-overlay">
         <div class="spinner custom-spinner"></div>
@@ -453,11 +486,11 @@ min-h-screen relative [grid-template-areas:'routing_routing_routing'_'header_hea
       class="w3-container tab w-full max-w-full overflow-hidden"
       style:display={activeTab === "results" ? "block" : "none"}
     >
-      {#each pdfBooksAsResultObjects as result}
+      {#each pdfBooksAsResultObjects as result (result.bookTitle + '-' + result.pageNum)}
         <PdfBlock
           {result}
           ondelete={handleDeleteForPdfBlock}
-          onchange={(r, checked) => handleCheckboxChangeForPdfBlock(r, checked)}
+          bind:checkedGroup={checkedResultsGroup}
         />
       {/each}
     </div>
