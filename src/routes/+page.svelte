@@ -334,6 +334,14 @@
     isCheckAll = isAllChecked;
   });
 
+  let isAllResultsChecked = $derived(
+    checkedResultsGroup.length === pdfBooksAsResultObjects.length &&
+      pdfBooksAsResultObjects.length > 0,
+  );
+  $effect(() => {
+    isCheckAllResults = isAllResultsChecked;
+  });
+
   function handleDeleteForPdfBlock(result: PdfBookResult): void {
     pdfBooksAsResultObjects = pdfBooksAsResultObjects.filter(
       (r) => r !== result,
