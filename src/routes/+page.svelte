@@ -9,10 +9,10 @@
   import { searchQueryWritable } from "$lib/store";
   import type { ISearchData } from "$lib";
 
-  let selectedSubject = $state("");
-  let setDataPdfSubjects: string[] = $state([]);
-  let pdfBooksGetFromSubject: Writable<string[]> = writable([]);
-  let pdfBookCheckFromPdfTab: string[] = $state([]);
+  let selectedSubjectString = $state("");
+  let pdfSubjectsStrings_Array: string[] = $state([]);
+  let pdfBookStrings_Array: Writable<string[]> = writable([]);
+  let pdfBookCheckedStrings_Array: string[] = $state([]);
   let mySearchData = $state<ISearchData | string>({
     message: "",
     results: {},
@@ -20,26 +20,26 @@
   });
   let isLoading: boolean = $state(false);
   let pdfBooksRetFromSearch: any = undefined;
-  let pdfBooksAsResultObjects: PdfBookResult[] = $state([]);
+  let pdfBooksAsResultObjectsArray: PdfBookResult[] = $state([]);
   let activeTab: string = $state("pdfs");
   let checkedResults: PdfBookResult[] = $state([]);
   let checkedResultsGroup: PdfBookResult[] = $state([]);
   let isCheckAll: boolean = $state(false);
   let isCheckAllResults: boolean = $state(false);
   let pdfLimit: number = 25;
-  let totalCount = $derived(pdfBooksAsResultObjects.length);
+  let totalCount = $derived(pdfBooksAsResultObjectsArray.length);
 
   // onMount - Load subjects from Tauri DB and initialize
   onMount(async () => {
     try {
       const { getSubjects } = await import('$lib/tauri-db');
-      setDataPdfSubjects = await getSubjects();
+      pdfSubjectsStrings_Array = await getSubjects();
       
-      if (setDataPdfSubjects.length > 0) {
-        console.log("In onMount, subjects loaded:", setDataPdfSubjects);
-        selectedSubject = setDataPdfSubjects[0]; // Set default to the first subject
+      if (pdfSubjectsStrings_Array.length > 0) {
+        console.log("In onMount, subjects loaded:", pdfSubjectsStrings_Array);
+        selectedSubjectString = pdfSubjectsStrings_Array[0]; // Set default to the first subject
         // Automatically trigger the fetch for the first subject
-        handleLoadPdfTitlesFromSubject(selectedSubject);
+        handleLoadPdfTitlesFromSubject(selectedSubjectString);
       }
     } catch (error) {
       console.error('Error loading subjects:', error);
@@ -54,13 +54,13 @@
   function handleSubjectChange(event: Event): void {
     const target = event.target as HTMLInputElement;
     const subject: string = target.value;
-    selectedSubject = subject;
+    selectedSubjectString = subject;
 
     if (subject) {
       // Trigger fetching based on subject
       handleLoadPdfTitlesFromSubject(subject);
     } else {
-      pdfBooksGetFromSubject.set([]); // Clear the PDF books if no subject is selected
+      pdfBookStrings_Array.set([]); // Clear the PDF books if no subject is selected
     }
   }
 
@@ -71,11 +71,11 @@
     subject: string,
   ): Promise<void> {
     try {
-      pdfBooksAsResultObjects = [];
+      pdfBooksAsResultObjectsArray = [];
       const { getBookTitlesBySubject } = await import('$lib/tauri-db');
       const data: string[] = await getBookTitlesBySubject(subject);
 
-      pdfBooksGetFromSubject.set(data || []);
+      pdfBookStrings_Array.set(data || []);
     } catch (error) {
       console.error("Error fetching PDF titles:", error);
     }
@@ -160,7 +160,7 @@
       Object.keys(mySearchData.results).length > 0
     ) {
       pdfBooksRetFromSearch = Object.keys(mySearchData.results);
-      pdfBooksAsResultObjects = [];
+      pdfBooksAsResultObjectsArray = [];
       console.log(
         "clearing pdfBooksAsResultObjects in handleLoadPdfDataFromPdfTab adding to the " +
           "results objects",
@@ -173,7 +173,7 @@
             const cleanedText = cleanTextSpacing(text);
             const sentence = findSentenceForPdfPage(cleanedText, $searchQueryWritable);
             const cleanedSentence = cleanTextSpacing(sentence);
-            pdfBooksAsResultObjects.push(
+            pdfBooksAsResultObjectsArray.push(
               new PdfBookResult(
                 pdfBooksRetFromSearch[i],
                 pageNum,
@@ -184,7 +184,7 @@
           }
         }
       } else {
-        pdfBooksAsResultObjects = [];
+        pdfBooksAsResultObjectsArray = [];
         console.log("clearing pdfBooksAsResultObjects - else is null");
       }
     } else {
@@ -300,50 +300,71 @@
   //isCheckAll to true.
   function handleCheckAll(event: Event): void {
     const target = event.target as HTMLInputElement;
+    const checked = target.checked;
 
-    isCheckAll = target.checked;
-
-    if (isCheckAll) {
-      pdfBookCheckFromPdfTab = $pdfBooksGetFromSubject;
+    if (checked) {
+      pdfBookCheckedStrings_Array = $pdfBookStrings_Array;
     } else {
-      pdfBookCheckFromPdfTab = [];
+      pdfBookCheckedStrings_Array = [];
     }
   }
 
   //handleCheckAllResults(event: Event): void
   //Handles checking/unchecking all PdfBlock results in the Results tab.
-  //Mirrors the approach used in the Pdfs tab with bind:group.
-  //When checked, all results are added to checkedResultsGroup.
-  //When unchecked, checkedResultsGroup is cleared.
   function handleCheckAllResults(event: Event): void {
+    console.log("handleCheckAllResults called");
     const target = event.target as HTMLInputElement;
-    isCheckAllResults = target.checked;
+    const checked = target.checked;
+    console.log("checked:", checked);
+    console.log("pdfBooksAsResultObjectsArray length:", pdfBooksAsResultObjectsArray.length);
 
-    if (isCheckAllResults) {
-      checkedResultsGroup = [...pdfBooksAsResultObjects];
+    pdfBooksAsResultObjectsArray.forEach(result => {
+      console.log("Setting result.isChecked to:", checked, "for:", result.bookTitle);
+      result.isChecked = checked;
+    });
+    
+    // Trigger reactivity by reassigning the array
+    pdfBooksAsResultObjectsArray = [...pdfBooksAsResultObjectsArray];
+    console.log("Array reassigned, first result.isChecked:", pdfBooksAsResultObjectsArray[0]?.isChecked);
+    
+    if (checked) {
+      checkedResultsGroup = [...pdfBooksAsResultObjectsArray];
     } else {
       checkedResultsGroup = [];
     }
+    console.log("checkedResultsGroup length:", checkedResultsGroup.length);
   }
 
+  //handleCheckboxChangeForResults(result: PdfBookResult, checked: boolean): void
+  //Callback from PdfBlock when individual checkbox is toggled.
+  function handleCheckboxChangeForResults(result: PdfBookResult, checked: boolean): void {
+    result.isChecked = checked;
+    
+    if (checked) {
+      if (!checkedResultsGroup.includes(result)) {
+        checkedResultsGroup = [...checkedResultsGroup, result];
+      }
+    } else {
+      checkedResultsGroup = checkedResultsGroup.filter(r => r !== result);
+      if (isCheckAllResults) {
+        isCheckAllResults = false;
+      }
+    }
+  }
+
+
   let isAllChecked = $derived(
-    pdfBookCheckFromPdfTab.length === $pdfBooksGetFromSubject.length &&
-      $pdfBooksGetFromSubject.length > 0,
+    pdfBookCheckedStrings_Array.length === $pdfBookStrings_Array.length &&
+      $pdfBookStrings_Array.length > 0,
   );
   $effect(() => {
+    console.log("isAllChecked fired !!!");
     isCheckAll = isAllChecked;
   });
 
-  let isAllResultsChecked = $derived(
-    checkedResultsGroup.length === pdfBooksAsResultObjects.length &&
-      pdfBooksAsResultObjects.length > 0,
-  );
-  $effect(() => {
-    isCheckAllResults = isAllResultsChecked;
-  });
 
   function handleDeleteForPdfBlock(result: PdfBookResult): void {
-    pdfBooksAsResultObjects = pdfBooksAsResultObjects.filter(
+    pdfBooksAsResultObjectsArray = pdfBooksAsResultObjectsArray.filter(
       (r) => r !== result,
     );
   }
@@ -402,8 +423,8 @@ min-h-screen relative [grid-template-areas:'routing_routing_routing'_'header_hea
     </h1>
     {#if activeTab !== "results"}
       <SearchBar
-        {selectedSubject}
-        pdfBookTitles={pdfBookCheckFromPdfTab}
+        selectedSubject={selectedSubjectString}
+        pdfBookTitles={pdfBookCheckedStrings_Array}
         onsearchResults={handleLoadPdfDataFromPdfTab}
         onloadingChange={handleLoadingChange}
       />
@@ -430,7 +451,7 @@ min-h-screen relative [grid-template-areas:'routing_routing_routing'_'header_hea
         class="w-full p-1 border border-gray-300 rounded-md bg-gray-100 !text-base sm:!text-lg md:!text-xl lg:!text-2xl font-comic"
       >
         <!-- <option value="" disabled>Select a subject</option> -->
-        {#each setDataPdfSubjects as pdfSubject}
+        {#each pdfSubjectsStrings_Array as pdfSubject}
           <option
             id="pdfsubject"
             class="pdfsubject font-comic"
@@ -465,9 +486,9 @@ min-h-screen relative [grid-template-areas:'routing_routing_routing'_'header_hea
       class="w3-container tab w-full max-w-full overflow-hidden"
       style:display={activeTab === "pdfs" ? "block" : "none"}
     >
-      {#if $pdfBooksGetFromSubject.length > 0}
+      {#if $pdfBookStrings_Array.length > 0}
         <ul class="pdf-titles-list list-none p-0 m-0 text-left w-full">
-          {#each $pdfBooksGetFromSubject as title}
+          {#each $pdfBookStrings_Array as title}
             <li
               class="pdf-title-block mb-2 border-b border-gray-300 pb-1 hover:bg-gray-100 flex items-start gap-2 w-full max-w-full"
             >
@@ -475,7 +496,7 @@ min-h-screen relative [grid-template-areas:'routing_routing_routing'_'header_hea
                 type="checkbox"
                 id={title}
                 class="pdf-title-item w-4 h-4 mt-1 scale-150 cursor-pointer flex-shrink-0"
-                bind:group={pdfBookCheckFromPdfTab}
+                bind:group={pdfBookCheckedStrings_Array}
                 value={title}
               />
               <label
@@ -488,17 +509,18 @@ min-h-screen relative [grid-template-areas:'routing_routing_routing'_'header_hea
         </ul>
       {/if}
     </div>
-
+<!-- (result.bookTitle + '-' + result.pageNum) -->
     <div
       id="results"
       class="w3-container tab w-full max-w-full overflow-hidden"
       style:display={activeTab === "results" ? "block" : "none"}
     >
-      {#each pdfBooksAsResultObjects as result (result.bookTitle + '-' + result.pageNum)}
+      {#each pdfBooksAsResultObjectsArray as result (result.bookTitle + '-' + result.pageNum)}
         <PdfBlock
           {result}
+          isChecked={checkedResultsGroup.includes(result)}
+          oncheckchange={handleCheckboxChangeForResults}
           ondelete={handleDeleteForPdfBlock}
-          bind:checkedGroup={checkedResultsGroup}
         />
       {/each}
     </div>

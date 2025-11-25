@@ -1,13 +1,18 @@
 <script lang="ts">
 	import type { PdfBookResult } from "$lib/classes/PdfBookResult";
 	
-	let { result, ondelete, checkedGroup = $bindable() }: {
+	let { result, ondelete, isChecked, oncheckchange }: {
 		result: PdfBookResult;
 		ondelete?: (result: PdfBookResult) => void;
-		checkedGroup: PdfBookResult[];
+		isChecked: boolean;
+		oncheckchange?: (result: PdfBookResult, checked: boolean) => void;
 	} = $props();
 	
 	let isExpanded: boolean = $state(false);
+
+	$effect(() => {
+		console.log(`[PdfBlock ${result.bookTitle}-${result.pageNum}] isChecked prop:`, isChecked);
+	});
 
 	//If the clicked element is inside the .pdf-checkbox - returns without expansion of the page text
 	//Outside of that, the click expands the page text.
@@ -19,24 +24,16 @@
 		isExpanded = !isExpanded;
 	}
 
-	// This is a callback which returns result && checked to the parent +page.svelte main page.
-	function handleCheckboxChangeDispatch(event: Event) {
-		console.log("[PdfBlock] in handleCheckboxChangeDispatch");
-		const target = event.target as HTMLInputElement;
-		result.isChecked = target.checked;
-		console.log("[PdfBlock] Checkbox changed - result.isChecked:", result.isChecked);
-		console.log("[PdfBlock] onchange callback exists?", !!onchange);
-		if (onchange) {
-			console.log("[PdfBlock] Calling onchange callback with result:", result, "checked:", result.isChecked);
-			onchange(result, result.isChecked);
-		} else {
-			console.error("[PdfBlock] onchange callback is undefined!");
-		}
-	}
-
 	// This is a callback which returns result to the parent +page.svelte main page.
 	function handleDeleteDispatch() {
 		ondelete?.(result); // Send the result object to the parent
+	}
+
+	// handleCheckboxChange(event: Event): void
+	// Callback to notify parent when checkbox state changes
+	function handleCheckboxChange(event: Event): void {
+		const target = event.target as HTMLInputElement;
+		oncheckchange?.(result, target.checked);
 	}
 </script>
 
@@ -54,8 +51,8 @@
 >
 	<input
 		type="checkbox"
-		bind:group={checkedGroup}
-		value={result}
+		checked={isChecked}
+		onchange={handleCheckboxChange}
 		class="pdf-checkbox w-4 h-4 mx-3 pr-1 scale-150 cursor-pointer"
 		onclick={(e) => {
 			e.stopPropagation();
