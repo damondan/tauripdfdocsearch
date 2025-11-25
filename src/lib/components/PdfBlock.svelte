@@ -10,9 +10,9 @@
 	
 	let isExpanded: boolean = $state(false);
 
-	$effect(() => {
-		console.log(`[PdfBlock ${result.bookTitle}-${result.pageNum}] isChecked prop:`, isChecked);
-	});
+	// $effect(() => {
+	// 	console.log(`[PdfBlock ${result.bookTitle}-${result.pageNum}] isChecked prop:`, isChecked);
+	// });
 
 	//If the clicked element is inside the .pdf-checkbox - returns without expansion of the page text
 	//Outside of that, the click expands the page text.

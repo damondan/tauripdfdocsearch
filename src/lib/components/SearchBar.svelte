@@ -29,7 +29,7 @@
 
 		// Check if both search query and PDFs are missing
 		if (!searchQuery.trim() && normPdfTitles.length == 0) {
-			console.error("Both search query and PDFs are missing");
+			//console.error("Both search query and PDFs are missing");
 			onsearchResults?.("noSearchTermAndNoPdfs");
 			return;
 		}
@@ -42,7 +42,7 @@
 
 		// Check if PDFs are selected but no search query is provided
 		if (!searchQuery.trim()) {
-			console.error("Search query is empty but PDFs are selected");
+			//console.error("Search query is empty but PDFs are selected");
 			onsearchResults?.("noSearchTerm");
 			return;
 		}
@@ -60,7 +60,7 @@
 			searchQuery,
 			pdfBookTitles,
 		};
-		console.log("Payload before Tauri invoke:", payload);
+		//console.log("Payload before Tauri invoke:", payload);
 
 		try {
 			loading = true;
@@ -73,17 +73,18 @@
 				normPdfTitles
 			);
 
-			console.log("Search results:", result);
+			//console.log("Search results:", result);
 
 			loading = false;
 			onloadingChange?.(loading);
+			console.log("*********************" +result);
 			onsearchResults?.(result);
 
 			// Clear input and hide dropdown after successful search
 			searchQuery = "";
 			showDropdown = false;
 		} catch (error) {
-			console.error("Error in handleSearch:", error);
+			//console.error("Error in handleSearch:", error);
 			loading = false;
 			onloadingChange?.(loading);
 		}
@@ -101,13 +102,13 @@
 	 * @param {string} term - The search term selected
 	 */
 	const handleSelectSearch = (term: string) => {
-		console.log("Selected:", term);
+		//console.log("Selected:", term);
 		searchQuery = term; // Populate input with selected term
 		showDropdown = false; // Hide dropdown
 	};
 
 	const handleClickOutside = (event: Event) => {
-		console.log("nadleCLickOutside");
+		//console.log("nadleCLickOutside");
 		const dropdown = document.getElementById("search-dropdn");
 		const inputField = document.getElementById("search");
 		const target = event.target as Node;
@@ -123,7 +124,7 @@
 
 	function handleInputKeydown(event: KeyboardEvent) {
 		if (event.key === "Enter") {
-			console.log("Enter key pressed");
+			//console.log("Enter key pressed");
 			handleSearchDispatch();
 		}
 	}
@@ -141,7 +142,7 @@
 			}
 			return searches;
 		});
-		console.log($previousSearchesWritable);
+		//console.log($previousSearchesWritable);
 	}
 
 	// Close dropdown if clicked outside

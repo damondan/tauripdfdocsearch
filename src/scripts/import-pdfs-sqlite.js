@@ -15,44 +15,13 @@ const __dirname = dirname(__filename);
 let db;
 
 // Configure PDF.js for Node environment
-GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs'; 
-
-// Create a custom Node.js compatible document loader
-const NodeCanvasFactory = {
-  create: function(width, height) {
-    return {
-      width,
-      height,
-      getContext: function() {
-        return {
-          // Stub methods that might be called but aren't needed for text extraction
-          scale: function() {},
-          translate: function() {},
-          transform: function() {},
-          beginPath: function() {},
-          moveTo: function() {},
-          lineTo: function() {},
-          closePath: function() {},
-          stroke: function() {},
-          fill: function() {},
-          measureText: function() { return { width: 0 }; },
-          fillText: function() {},
-          restore: function() {},
-          save: function() {},
-          rect: function() {},
-          clip: function() {}
-        };
-      },
-      toBuffer: function() { return null; }
-    };
-  }
-};
+GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 
 // Get Tauri app data directory path (matches what Tauri uses)
 function getDbPath() {
   const platform = process.platform;
   let dataDir;
-  
+
   if (platform === 'darwin') {
     dataDir = path.join(homedir(), 'Library', 'Application Support', 'com.tauri.dev');
   } else if (platform === 'win32') {
@@ -61,23 +30,23 @@ function getDbPath() {
     // Linux - Tauri uses .config in dev mode
     dataDir = path.join(homedir(), '.config', 'com.tauri.dev');
   }
-  
+
   return path.join(dataDir, 'pdfsearch.db');
 }
 
 // SQLite connection function
 async function connect() {
   if (db) return db;
-  
+
   const dbPath = getDbPath();
   const dbDir = path.dirname(dbPath);
-  
+
   // Ensure directory exists
   await fs.mkdir(dbDir, { recursive: true });
-  
+
   db = new Database(dbPath);
   console.log(`Connected to SQLite at: ${dbPath}`);
-  
+
   // Create tables if they don't exist
   db.exec(`
     CREATE TABLE IF NOT EXISTS books (
@@ -104,7 +73,7 @@ async function connect() {
     CREATE INDEX IF NOT EXISTS idx_books_subject ON books(subject);
     CREATE INDEX IF NOT EXISTS idx_pages_lookup ON pages(subject, bookTitle, pageNum);
   `);
-  
+
   return db;
 }
 
@@ -122,7 +91,7 @@ const bookModel = {
   async upsertBook(bookData) {
     const database = await connect();
     const now = new Date().toISOString();
-    
+
     const stmt = database.prepare(`
       INSERT INTO books (subject, bookTitle, fileName, importedAt, updatedAt)
       VALUES (?, ?, ?, ?, ?)
@@ -130,7 +99,7 @@ const bookModel = {
       fileName = excluded.fileName,
       updatedAt = excluded.updatedAt
     `);
-    
+
     stmt.run(
       bookData.subject,
       bookData.bookTitle,
@@ -145,7 +114,7 @@ const pageModel = {
   async upsertPage(pageData) {
     const database = await connect();
     const now = new Date().toISOString();
-    
+
     const stmt = database.prepare(`
       INSERT INTO pages (subject, bookTitle, pageNum, text, importedAt, updatedAt)
       VALUES (?, ?, ?, ?, ?, ?)
@@ -153,7 +122,7 @@ const pageModel = {
       text = excluded.text,
       updatedAt = excluded.updatedAt
     `);
-    
+
     stmt.run(
       pageData.subject,
       pageData.bookTitle,
@@ -166,7 +135,7 @@ const pageModel = {
 
   async createFtsTable() {
     const database = await connect();
-    
+
     // Create FTS5 virtual table
     database.exec(`
       CREATE VIRTUAL TABLE IF NOT EXISTS pages_fts USING fts5(
@@ -203,7 +172,7 @@ const pageModel = {
         VALUES (new.id, new.subject, new.bookTitle, new.pageNum, new.text);
       END;
     `);
-    
+
     console.log('FTS table and triggers created');
   }
 };
@@ -213,16 +182,16 @@ async function importPdfs() {
   try {
     // Connect to SQLite
     await connect();
-    
+
     // Get all directories (subjects)
     const baseDir = path.join(__dirname, '..', '..');
     console.log('Script __dirname:', __dirname);
     console.log('Base directory:', baseDir);
-    
+
     // Specify the subject folders we're looking for
-    const subjectFolders = ['Codoh','Program Languages', 'NonFiction', 'Jung'];
+    const subjectFolders = ['Codoh', 'Program Languages', 'NonFiction', 'Jung'];
     const subjects = [];
-    
+
     // Check if each subject folder exists
     for (const folder of subjectFolders) {
       const folderPath = path.join(baseDir, folder);
@@ -238,25 +207,25 @@ async function importPdfs() {
         console.log(`Error:`, error.message);
       }
     }
-    
+
     console.log(`Found ${subjects.length} subjects: ${subjects.join(', ')}`);
-    
+
     // Process each subject
     for (const subject of subjects) {
       console.log(`\nProcessing subject: ${subject}`);
       const subjectPath = path.join(baseDir, subject);
-      
+
       // Get all PDF files in the subject folder
       const files = await fs.readdir(subjectPath);
       const pdfFiles = files.filter(file => file.toLowerCase().endsWith('.pdf'));
-      
+
       console.log(`Found ${pdfFiles.length} PDF files in ${subject}`);
-      
+
       // Process each PDF file
       for (const pdfFile of pdfFiles) {
         const bookTitle = path.basename(pdfFile, '.pdf');
         console.log(`\nProcessing book: ${bookTitle}`);
-        
+
         // Store book information
         await bookModel.upsertBook({
           subject,
@@ -264,36 +233,37 @@ async function importPdfs() {
           fileName: pdfFile,
           importedAt: new Date().toISOString()
         });
-        
+
         // Process the PDF pages
         try {
           const pdfPath = path.join(subjectPath, pdfFile);
           const dataBuffer = await fs.readFile(pdfPath);
-          
+
           // Configure PDF.js with Node.js friendly options
           const loadingTask = getDocument({
             data: new Uint8Array(dataBuffer),
-            canvasFactory: NodeCanvasFactory,
-            disableFontFace: true,
-            nativeImageDecoderSupport: 'none'
           });
-          
+
           // Load the PDF
           const pdf = await loadingTask.promise;
           const numPages = pdf.numPages;
-          
+
           console.log(`PDF has ${numPages} pages. Extracting text...`);
-          
+
           // Process each page
           for (let pageNum = 1; pageNum <= numPages; pageNum++) {
             try {
               // Get the page
               const page = await pdf.getPage(pageNum);
-              
+
               // Extract text content
               const textContent = await page.getTextContent();
-              const pageText = textContent.items.map(item => item.str).join(' ');
-              
+              //const pageText = textContent.items.map(item => item.str).join(' ');
+              const pageText = textContent.items
+                .filter(item => 'str' in item)  // Only get TextItem objects
+                .map(item => item.str)
+                .join(' ');
+
               // Store page in SQLite
               await pageModel.upsertPage({
                 subject,
@@ -302,7 +272,7 @@ async function importPdfs() {
                 text: pageText,
                 importedAt: new Date().toISOString()
               });
-              
+
               if (pageNum % 10 === 0 || pageNum === numPages) {
                 console.log(`Processed ${pageNum}/${numPages} pages of ${bookTitle}`);
               }
@@ -315,11 +285,11 @@ async function importPdfs() {
         }
       }
     }
-    
+
     // Create FTS table after all data is imported
     console.log('\nCreating full-text search indexes...');
     await pageModel.createFtsTable();
-    
+
     console.log('\nImport completed successfully!');
   } catch (error) {
     console.error('Import failed:', error);
