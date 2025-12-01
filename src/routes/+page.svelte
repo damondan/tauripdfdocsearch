@@ -33,12 +33,16 @@
 	let carouselGroupsMap = $state(new Map<string, (PdfBookResult | null)[]>());
 
 	// Extract carousel group for a match result (matches are at indices 1, 4, 7...)
-	function getCarouselGroupForMatch(allResults: (PdfBookResult | null)[], matchIndex: number): (PdfBookResult | null)[] {//was PdfBookResult
+	function getCarouselGroupForMatch(
+		allResults: (PdfBookResult | null)[],
+		matchIndex: number
+	): (PdfBookResult | null)[] {
+		//was PdfBookResult
 		return [
-		allResults[matchIndex - 1] || null,
-		allResults[matchIndex],
-		allResults[matchIndex + 1] || null
-	];
+			allResults[matchIndex - 1] || null,
+			allResults[matchIndex],
+			allResults[matchIndex + 1] || null
+		];
 	}
 
 	// onMount - Load subjects from Tauri DB and initialize
@@ -185,7 +189,9 @@
 		} else {
 			alert('Search returned 0 for ' + $searchQueryWritable);
 		}
-		pagesReturnedFromSearch_pdfBookResults = pagesReturned_pdfBookResults.filter((page,idx)=>idx % 3 ==1);
+		pagesReturnedFromSearch_pdfBookResults = pagesReturned_pdfBookResults.filter(
+			(page, idx) => idx % 3 == 1
+		);
 	}
 
 	//In clicking the Download button displayed in the Results tab, this function is executed. The checkedResults
@@ -204,26 +210,25 @@
 		const today = new Date().toISOString().split('T')[0];
 		const defaultFilename = `${$searchQueryWritable}-${today}`;
 
-	// Collect all checked pages from all carousels in order
-		const checkedPages: Array<{bookTitle: string, pageNum: number, text: string}> = [];
-		
+		const checkedPages: Array<{ bookTitle: string; pageNum: number; text: string }> = [];
+
 		// Get references to all PdfBlock components and collect checked pages from their carousels
 		const pdfBlockElements = document.querySelectorAll('.pdf-block');
 		let blockIdx = 0;
-		
+
 		// Iterate through all results to find match pages and get their carousel checked state
 		for (let idx = 0; idx < pagesReturned_pdfBookResults.length; idx++) {
 			if (idx % 3 === 1) {
 				// This is a match page
 				const matchResult = pagesReturned_pdfBookResults[idx];
-				
+
 				// Skip if matchResult is null
 				if (matchResult === null) continue;
-				
+
 				// Check if the match result itself is in checkedResultsGroup
 				if (checkedResultsGroup.includes(matchResult)) {
 					const carouselGroup = getCarouselGroupForMatch(pagesReturned_pdfBookResults, idx);
-					
+
 					// Add all non-null pages from this carousel group
 					for (const page of carouselGroup) {
 						if (page) {
@@ -293,29 +298,29 @@
 	// 		return `No sentence found containing "${errSubject}".`;
 	// 	}
 	// };
-const findSentenceForPdfPage = (text: string, subject: string): string => {
-    if (!text || !subject) return 'No page text or sentence found';
+	const findSentenceForPdfPage = (text: string, subject: string): string => {
+		if (!text || !subject) return 'No page text or sentence found';
 
-    const errSubject = subject.toLowerCase();
-    // Word boundary regex for the search term
-    const sub = `\\b${subject}\\b`;
+		const errSubject = subject.toLowerCase();
+		// Word boundary regex for the search term
+		const sub = `\\b${subject}\\b`;
 
-    // Match a sentence containing the search term
-    const sentenceRegex = new RegExp(`[^.?!]*${sub}[^.?!]*(?:[.?!]|$)`, 'gi');
-    const match = sentenceRegex.exec(text);
+		// Match a sentence containing the search term
+		const sentenceRegex = new RegExp(`[^.?!]*${sub}[^.?!]*(?:[.?!]|$)`, 'gi');
+		const match = sentenceRegex.exec(text);
 
-    if (match) {
-        let sentence = match[0].trim();
-        // Replace the search term with highlighted version
-        const highlightedSentence = sentence.replace(
-            new RegExp(sub, 'gi'), 
-            (m) => `**********${m}**********`
-        );
-        return highlightedSentence;
-    } else {
-        return `No sentence found containing "${errSubject}".`;
-    }
-};
+		if (match) {
+			let sentence = match[0].trim();
+			// Replace the search term with highlighted version
+			const highlightedSentence = sentence.replace(
+				new RegExp(sub, 'gi'),
+				(m) => `**********${m}**********`
+			);
+			return highlightedSentence;
+		} else {
+			return `No sentence found containing "${errSubject}".`;
+		}
+	};
 
 	//handleCheckboxChangeForPdfBlock is a callback for the +page.svelte component
 	//or parent to the PdfBlock component or child.
@@ -412,7 +417,7 @@ const findSentenceForPdfPage = (text: string, subject: string): string => {
 	function handleDeleteForPdfBlock(result: PdfBookResult): void {
 		const idx = pagesReturned_pdfBookResults.indexOf(result);
 		//pagesReturned_pdfBookResults = pagesReturned_pdfBookResults.filter((r) => r !== result);
-		pagesReturned_pdfBookResults.splice(idx - 1,idx +1);
+		pagesReturned_pdfBookResults.splice(idx - 1, idx + 1);
 		console.log(pagesReturned_pdfBookResults.length);
 	}
 </script>
@@ -444,14 +449,11 @@ bg-gradient-to-b p-1 [grid-template-areas:'routing_routing_routing'_'header_head
 				class="font-comic shadow-soft mb-1 ml-5 cursor-pointer rounded-md border-[#333333] bg-[#3e228c] px-4
         py-2 !text-base text-white hover:bg-[#3206de] sm:!text-lg md:!text-xl lg:!text-2xl"
 			/>
-			<div class="total-count ml-5 h-auto w-auto rounded-md sm:ml-0 sm:h-10 sm:w-36">
+			<!-- <div class="total-count ml-5 h-auto w-auto rounded-md sm:ml-0 sm:h-10 sm:w-36">
 				<p
 					class="font-comic m-0 w-full overflow-visible text-left !text-base font-light whitespace-nowrap text-black sm:text-center
-           sm:!text-lg md:!text-xl lg:!text-2xl"
-				>
-					Results {totalCount}
-				</p>
-			</div>
+           sm:!text-lg md:!text-xl lg:!text-2xl">Results {totalCount}</p>
+			</div> -->
 		</div>
 	{:else}
 		<div class="ml-[15%] flex items-end justify-start pb-2 [grid-area:download-r-checkall-buttons]">
@@ -507,6 +509,19 @@ bg-gradient-to-b p-1 [grid-template-areas:'routing_routing_routing'_'header_head
 					>
 				{/each}
 			</select>
+		</div>
+	{:else}
+		<div class="mb-4 flex w-full justify-end [grid-area:pdfsubjects-dropdnlist]">
+			<div
+				class="total-count mr-20 h-auto w-auto rounded-md sm:ml-0 sm:h-10 sm:w-36"
+			>
+				<p
+					class="font-comic text-red m-0 w-full overflow-visible text-right !text-base font-light whitespace-nowrap sm:text-center
+           sm:!text-lg md:!text-xl lg:!text-2xl"
+				>
+					Results {totalCount}
+				</p>
+			</div>
 		</div>
 	{/if}
 	<div
@@ -577,7 +592,7 @@ bg-gradient-to-b p-1 [grid-template-areas:'routing_routing_routing'_'header_head
 		>
 			{#each pagesReturned_pdfBookResults as result, idx}
 				<!-- Only show match pages (at indices 1, 4, 7... which is where idx % 3 === 1) and skip nulls -->
-				{#if result !== null && idx % 3 === 1 && !result.sentence.includes("No sentence found containing")}
+				{#if result !== null && idx % 3 === 1 && !result.sentence.includes('No sentence found containing')}
 					{@const carouselGroup = getCarouselGroupForMatch(pagesReturned_pdfBookResults, idx)}
 					<PdfBlock
 						{result}
