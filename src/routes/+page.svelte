@@ -8,6 +8,7 @@
 	import { PdfBookResult } from '$lib/classes/PdfBookResult';
 	import { searchQueryWritable } from '$lib/store';
 	import type { ISearchData } from '$lib';
+	import { page } from '$app/state';
 
 	let selectedSubjectString = $state('');
 	let pdfSubjectsStrings_Array: string[] = $state([]);
@@ -19,15 +20,26 @@
 		total: 0
 	});
 	let isLoading: boolean = $state(false);
-	let pdfBooksRetFromSearch: any = undefined;
-	let pdfBooksAsResultObjectsArray: PdfBookResult[] = $state([]);
+	let pagesReturned_pdfBookResults: (PdfBookResult | null)[] = $state([]);
+	let pagesReturnedFromSearch_pdfBookResults: (PdfBookResult | null)[] = $state([]);
 	let activeTab: string = $state('pdfs');
 	let checkedResults: PdfBookResult[] = $state([]);
 	let checkedResultsGroup: PdfBookResult[] = $state([]);
-	let isCheckAll: boolean = $state(false);
 	let isCheckAllResults: boolean = $state(false);
 	let pdfLimit: number = 25;
-	let totalCount = $derived(pdfBooksAsResultObjectsArray.length);
+	// let totalCount = $derived(pagesReturned_pdfBookResults.filter((page,idx)=>idx % 3 ==1).length);
+	let totalCount = $derived(pagesReturned_pdfBookResults.length / 3);
+	// Store carousel groups: each group is [prevPage, matchPage, nextPage]
+	let carouselGroupsMap = $state(new Map<string, (PdfBookResult | null)[]>());
+
+	// Extract carousel group for a match result (matches are at indices 1, 4, 7...)
+	function getCarouselGroupForMatch(allResults: (PdfBookResult | null)[], matchIndex: number): (PdfBookResult | null)[] {//was PdfBookResult
+		return [
+		allResults[matchIndex - 1] || null,
+		allResults[matchIndex],
+		allResults[matchIndex + 1] || null
+	];
+	}
 
 	// onMount - Load subjects from Tauri DB and initialize
 	onMount(async () => {
@@ -69,7 +81,7 @@
 	//is the folder name.
 	async function handleLoadPdfTitlesFromSubject(subject: string): Promise<void> {
 		try {
-			pdfBooksAsResultObjectsArray = [];
+			pagesReturned_pdfBookResults = [];
 			const { getBookTitlesBySubject } = await import('$lib/tauri-db');
 			const data: string[] = await getBookTitlesBySubject(subject);
 
@@ -88,20 +100,20 @@
 	}
 
 	function cleanTextSpacing(text: string): string {
-	  if (!text) return text;
+		if (!text) return text;
 
-	  let cleaned = text.replace(/\b(\w)\s+(?=\w)/g, (match, char, offset, string) => {
-	    const nextChar = string[offset + match.length];
-	    if (nextChar && nextChar === nextChar.toLowerCase() && char.length === 1) {
-	      return char; // Remove the space
-	    }
-	    return match; // Keep the space (it's a normal word boundary)
-	  });
+		let cleaned = text.replace(/\b(\w)\s+(?=\w)/g, (match, char, offset, string) => {
+			const nextChar = string[offset + match.length];
+			if (nextChar && nextChar === nextChar.toLowerCase() && char.length === 1) {
+				return char; // Remove the space
+			}
+			return match; // Keep the space (it's a normal word boundary)
+		});
 
-	  // Second, collapse multiple consecutive spaces into a single space
-	  cleaned = cleaned.replace(/\s{2,}/g, ' ');
+		// Second, collapse multiple consecutive spaces into a single space
+		cleaned = cleaned.replace(/\s{2,}/g, ' ');
 
-	  return cleaned.trim();
+		return cleaned.trim();
 	}
 
 	//This is a callback for +page.svelte or the parent component to the
@@ -113,7 +125,6 @@
 	//interfaces to configure with the json data. Lastly, it steps through the array to
 	//input the pdf attributes into creating a PdfBookResult object that is than stored into
 	//a pdfBooksAsResultObjects array.
-	// Replace the existing handleLoadPdfDataFromPdfTab function with this updated version:
 	function handleLoadPdfBlockData(data: ISearchData | string): void {
 		mySearchData = data;
 		//console.log('Received search results in parent(mySearchData):', mySearchData);
@@ -143,37 +154,38 @@
 		}
 
 		if (mySearchData.results != null && Object.keys(mySearchData.results).length > 0) {
-			pdfBooksRetFromSearch = Object.keys(mySearchData.results);
-			pdfBooksAsResultObjectsArray = [];
-			//console.log(
-			// 	'clearing pdfBooksAsResultObjects in handleLoadPdfDataFromPdfTab adding to the ' +
-			// 		'results objects'
-			// );
-			if (pdfBooksRetFromSearch != null) {
-				for (let i = 0; i < pdfBooksRetFromSearch.length; i++) {
-					const matches = mySearchData.results[pdfBooksRetFromSearch[i]];
+			let pagesReturned_arrayISearchData: any = undefined;
+			pagesReturned_arrayISearchData = Object.keys(mySearchData.results);
+			pagesReturned_pdfBookResults = [];
+			if (pagesReturned_arrayISearchData != null) {
+				for (let i = 0; i < pagesReturned_arrayISearchData.length; i++) {
+					const carouselItems = mySearchData.results[pagesReturned_arrayISearchData[i]];
+					const bookTitle = pagesReturned_arrayISearchData[i];
 
-					for (const { pageNum, text } of matches) {
-            //console.log("The page is ..." + text);
-						//const cleanedText = cleanTextSpacing(text);
-            //console.log("After cleanup " + cleanedText);
-						//const sentence = findSentenceForPdfPage(cleanedText, $searchQueryWritable);
-            const sentence = findSentenceForPdfPage(text, $searchQueryWritable);
-						//const cleanedSentence = cleanTextSpacing(sentence);
-            console.log('Book title strings ' + pdfBooksRetFromSearch[i]);
-						pdfBooksAsResultObjectsArray.push(
-							//new PdfBookResult(pdfBooksRetFromSearch[i], pageNum, cleanedSentence, cleanedText)
-              new PdfBookResult(pdfBooksRetFromSearch[i], pageNum, sentence, text)
-						);
+					// Iterate through carousel array which may contain null values
+					for (const item of carouselItems) {
+						if (item === null) {
+							// Add null placeholder to maintain carousel structure
+							pagesReturned_pdfBookResults.push(null as any);
+						} else {
+							const { pageNum, text } = item;
+							//console.log("The page is ---------------------->>>>..." + text);
+							const sentence = findSentenceForPdfPage(text, $searchQueryWritable);
+							console.log('Book title strings ' + bookTitle);
+							pagesReturned_pdfBookResults.push(
+								new PdfBookResult(bookTitle, pageNum, sentence, text)
+							);
+						}
 					}
 				}
 			} else {
-				pdfBooksAsResultObjectsArray = [];
+				pagesReturned_pdfBookResults = [];
 				//console.log('clearing pdfBooksAsResultObjects - else is null');
 			}
 		} else {
 			alert('Search returned 0 for ' + $searchQueryWritable);
 		}
+		pagesReturnedFromSearch_pdfBookResults = pagesReturned_pdfBookResults.filter((page,idx)=>idx % 3 ==1);
 	}
 
 	//In clicking the Download button displayed in the Results tab, this function is executed. The checkedResults
@@ -183,8 +195,6 @@
 	//checkedResults is formatted below to set the downloaded text in a more readable manner.
 	async function handleDownloadPdfsForPdfBlock(): Promise<void> {
 		//console.log('In handleDownloadPdfsForPdfBlock');
-		//console.log('checkedResultsGroup length:', checkedResultsGroup.length);
-		//console.log('checkedResultsGroup:', checkedResultsGroup);
 
 		if (checkedResultsGroup.length === 0) {
 			alert('Please select at least one PDF block to download');
@@ -194,11 +204,51 @@
 		const today = new Date().toISOString().split('T')[0];
 		const defaultFilename = `${$searchQueryWritable}-${today}`;
 
-		const checkedResultsContent = checkedResultsGroup
-			.map((result) => `${result.bookTitle}, Page ${result.pageNum}: ${result.pageText}\n`)
-			.join('\n');
+	// Collect all checked pages from all carousels in order
+		const checkedPages: Array<{bookTitle: string, pageNum: number, text: string}> = [];
+		
+		// Get references to all PdfBlock components and collect checked pages from their carousels
+		const pdfBlockElements = document.querySelectorAll('.pdf-block');
+		let blockIdx = 0;
+		
+		// Iterate through all results to find match pages and get their carousel checked state
+		for (let idx = 0; idx < pagesReturned_pdfBookResults.length; idx++) {
+			if (idx % 3 === 1) {
+				// This is a match page
+				const matchResult = pagesReturned_pdfBookResults[idx];
+				
+				// Skip if matchResult is null
+				if (matchResult === null) continue;
+				
+				// Check if the match result itself is in checkedResultsGroup
+				if (checkedResultsGroup.includes(matchResult)) {
+					const carouselGroup = getCarouselGroupForMatch(pagesReturned_pdfBookResults, idx);
+					
+					// Add all non-null pages from this carousel group
+					for (const page of carouselGroup) {
+						if (page) {
+							checkedPages.push({
+								bookTitle: matchResult.bookTitle,
+								pageNum: page.pageNum,
+								text: page.pageText
+							});
+						}
+					}
+				}
+			}
+		}
 
-		//console.log('Download content length:', checkedResultsContent.length);
+		// Sort checked pages by pageNum and bookTitle to maintain order
+		checkedPages.sort((a, b) => {
+			if (a.bookTitle === b.bookTitle) {
+				return a.pageNum - b.pageNum;
+			}
+			return a.bookTitle.localeCompare(b.bookTitle);
+		});
+
+		const checkedResultsContent = checkedPages
+			.map((page) => `${page.bookTitle}, Page ${page.pageNum}: ${page.text}\n`)
+			.join('\n');
 
 		try {
 			const { save } = await import('@tauri-apps/plugin-dialog');
@@ -228,21 +278,44 @@
 	//Used in handleLoadPdfDataFromPdfTab(event) to return the sentence within the page which
 	//holds the searchQuery term. The sentence is placed initially in the PdfBlock as a quick
 	//reference and in wanting to look further, can click on the block to open the full page.
-	const findSentenceForPdfPage = (text: string, subject: string): string => {
-		if (!text || !subject) return 'No page text or sentence found';
+	// const findSentenceForPdfPage = (text: string, subject: string): string => {
+	// 	if (!text || !subject) return 'No page text or sentence found';
 
-		const errSubject = subject.toLowerCase();
-		const sub = `\\b${subject}\\b`;
+	// 	const errSubject = subject.toLowerCase();
+	// 	const sub = `\\b${subject}\\b`;
 
-		const sentenceRegex = new RegExp(`[^.?!]*${sub}[^.?!]*(?:[.?!]|$)`, 'gi');
-		const match = sentenceRegex.exec(text);
+	// 	const sentenceRegex = new RegExp(`[^.?!]*${sub}[^.?!]*(?:[.?!]|$)`, 'gi');
+	// 	const match = sentenceRegex.exec(text);
 
-		if (match) {
-			return match[0].trim();
-		} else {
-			return `No sentence found containing "${errSubject}".`;
-		}
-	};
+	// 	if (match) {
+	// 		return match[0].trim();
+	// 	} else {
+	// 		return `No sentence found containing "${errSubject}".`;
+	// 	}
+	// };
+const findSentenceForPdfPage = (text: string, subject: string): string => {
+    if (!text || !subject) return 'No page text or sentence found';
+
+    const errSubject = subject.toLowerCase();
+    // Word boundary regex for the search term
+    const sub = `\\b${subject}\\b`;
+
+    // Match a sentence containing the search term
+    const sentenceRegex = new RegExp(`[^.?!]*${sub}[^.?!]*(?:[.?!]|$)`, 'gi');
+    const match = sentenceRegex.exec(text);
+
+    if (match) {
+        let sentence = match[0].trim();
+        // Replace the search term with highlighted version
+        const highlightedSentence = sentence.replace(
+            new RegExp(sub, 'gi'), 
+            (m) => `**********${m}**********`
+        );
+        return highlightedSentence;
+    } else {
+        return `No sentence found containing "${errSubject}".`;
+    }
+};
 
 	//handleCheckboxChangeForPdfBlock is a callback for the +page.svelte component
 	//or parent to the PdfBlock component or child.
@@ -291,30 +364,27 @@
 	//handleCheckAllResults(event: Event): void
 	//Handles checking/unchecking all PdfBlock results in the Results tab.
 	function handleCheckAllResults(event: Event): void {
-		//console.log('handleCheckAllResults called');
 		const target = event.target as HTMLInputElement;
 		const checked = target.checked;
-		//console.log('checked:', checked);
-		//console.log('pdfBooksAsResultObjectsArray length:', pdfBooksAsResultObjectsArray.length);
 
-		pdfBooksAsResultObjectsArray.forEach((result) => {
-			//console.log('Setting result.isChecked to:', checked, 'for:', result.bookTitle);
-			result.isChecked = checked;
+		// Update each result's checked state
+		pagesReturned_pdfBookResults.forEach((result) => {
+			if (result !== null) {
+				result.isChecked = checked;
+			}
 		});
 
-		// Trigger reactivity by reassigning the array
-		pdfBooksAsResultObjectsArray = [...pdfBooksAsResultObjectsArray];
-		//console.log(
-		// 	'Array reassigned, first result.isChecked:',
-		// 	pdfBooksAsResultObjectsArray[0]?.isChecked
-		// );
+		// Force reactivity by reassigning the entire array with spread
+		pagesReturned_pdfBookResults = [...pagesReturned_pdfBookResults];
 
+		// Update checkedResultsGroup based on checked state
 		if (checked) {
-			checkedResultsGroup = [...pdfBooksAsResultObjectsArray];
+			checkedResultsGroup = pagesReturned_pdfBookResults.filter(
+				(result) => result !== null
+			) as PdfBookResult[];
 		} else {
 			checkedResultsGroup = [];
 		}
-		//console.log('checkedResultsGroup length:', checkedResultsGroup.length);
 	}
 
 	//handleCheckboxChangeForResults(result: PdfBookResult, checked: boolean): void
@@ -338,13 +408,12 @@
 		pdfBookCheckedStrings_Array.length === $pdfBookStrings_Array.length &&
 			$pdfBookStrings_Array.length > 0
 	);
-	$effect(() => {
-		//console.log('isAllChecked fired !!!');
-		isCheckAll = isAllChecked;
-	});
 
 	function handleDeleteForPdfBlock(result: PdfBookResult): void {
-		pdfBooksAsResultObjectsArray = pdfBooksAsResultObjectsArray.filter((r) => r !== result);
+		const idx = pagesReturned_pdfBookResults.indexOf(result);
+		//pagesReturned_pdfBookResults = pagesReturned_pdfBookResults.filter((r) => r !== result);
+		pagesReturned_pdfBookResults.splice(idx - 1,idx +1);
+		console.log(pagesReturned_pdfBookResults.length);
 	}
 </script>
 
@@ -389,7 +458,7 @@ bg-gradient-to-b p-1 [grid-template-areas:'routing_routing_routing'_'header_head
 			<input
 				type="checkbox"
 				id="checkall-id"
-				bind:checked={isCheckAll}
+				checked={isAllChecked}
 				onchange={handleCheckAll}
 				class="shadow-soft mb-2 ml-5 h-5 w-5 scale-150 cursor-pointer"
 			/>
@@ -506,13 +575,18 @@ bg-gradient-to-b p-1 [grid-template-areas:'routing_routing_routing'_'header_head
 			class="w3-container tab w-full max-w-full overflow-hidden"
 			style:display={activeTab === 'results' ? 'block' : 'none'}
 		>
-			{#each pdfBooksAsResultObjectsArray as result (result.bookTitle + '-' + result.pageNum)}
-				<PdfBlock
-					{result}
-					isChecked={checkedResultsGroup.includes(result)}
-					oncheckchange={handleCheckboxChangeForResults}
-					ondelete={handleDeleteForPdfBlock}
-				/>
+			{#each pagesReturned_pdfBookResults as result, idx}
+				<!-- Only show match pages (at indices 1, 4, 7... which is where idx % 3 === 1) and skip nulls -->
+				{#if result !== null && idx % 3 === 1 && !result.sentence.includes("No sentence found containing")}
+					{@const carouselGroup = getCarouselGroupForMatch(pagesReturned_pdfBookResults, idx)}
+					<PdfBlock
+						{result}
+						isChecked={checkedResultsGroup.includes(result)}
+						oncheckchange={handleCheckboxChangeForResults}
+						ondelete={handleDeleteForPdfBlock}
+						{carouselGroup}
+					/>
+				{/if}
 			{/each}
 		</div>
 	</div>

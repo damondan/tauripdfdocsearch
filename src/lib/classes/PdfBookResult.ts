@@ -6,10 +6,10 @@ export class PdfBookResult {
     private _isChecked: boolean;
   
     constructor(bookTitle: string, pageNum: number, sentence: string, text: string) {
-      this._bookTitle = bookTitle; // e.g., "01PsychiatricStudies"
-      this._pageNum = pageNum;     // e.g., 36
-      this._sentence = sentence;   // e.g., "The quick brown fox jumps over the lazy dog."
-      this._pageText = text;       // Same as sentence for now, adjust if needed
+      this._bookTitle = bookTitle; 
+      this._pageNum = pageNum;    
+      this._sentence = sentence;  
+      this._pageText = text;       
       this._isChecked = false;
     }
   

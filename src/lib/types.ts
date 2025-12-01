@@ -26,7 +26,7 @@ export interface SearchRequestBody {
 
 export interface SearchResponse {
   message: string;
-  results: Record<string, any[]>;
+  results: Record<string, (PageResult | null)[]>;
   total: number;
 }
 
