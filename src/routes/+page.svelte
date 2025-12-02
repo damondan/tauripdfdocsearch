@@ -175,7 +175,7 @@
 							const { pageNum, text } = item;
 							//console.log("The page is ---------------------->>>>..." + text);
 							const sentence = findSentenceForPdfPage(text, $searchQueryWritable);
-							console.log('Book title strings ' + bookTitle);
+							//console.log('Book title strings ' + bookTitle);
 							pagesReturned_pdfBookResults.push(
 								new PdfBookResult(bookTitle, pageNum, sentence, text)
 							);
@@ -200,8 +200,8 @@
 	//Below -> <PdfBlock {result} ondelete={handleDeleteForPdfBlock} onchange={(result, checked) => handleCheckboxChangeForPdfBlock(result, checked)}
 	//checkedResults is formatted below to set the downloaded text in a more readable manner.
 	async function handleDownloadPdfsForPdfBlock(): Promise<void> {
-		//console.log('In handleDownloadPdfsForPdfBlock');
-
+		console.log('In handleDownloadPdfsForPdfBlock');
+		console.log('Checked Results length is ' + checkedResultsGroup.length);
 		if (checkedResultsGroup.length === 0) {
 			alert('Please select at least one PDF block to download');
 			return;
@@ -215,7 +215,8 @@
 		// Get references to all PdfBlock components and collect checked pages from their carousels
 		const pdfBlockElements = document.querySelectorAll('.pdf-block');
 		let blockIdx = 0;
-
+		console.log('checkedBlocks is length ' + pdfBlockElements.length);
+		console.log('pagesReturned_pdfBookResults.length is ' + pagesReturned_pdfBookResults.length);
 		// Iterate through all results to find match pages and get their carousel checked state
 		for (let idx = 0; idx < pagesReturned_pdfBookResults.length; idx++) {
 			if (idx % 3 === 1) {
@@ -226,6 +227,7 @@
 				if (matchResult === null) continue;
 
 				// Check if the match result itself is in checkedResultsGroup
+				console.log('checkedResultsGroup length is ' + checkedResultsGroup.length);
 				if (checkedResultsGroup.includes(matchResult)) {
 					const carouselGroup = getCarouselGroupForMatch(pagesReturned_pdfBookResults, idx);
 
@@ -243,7 +245,7 @@
 			}
 		}
 
-		// Sort checked pages by pageNum and bookTitle to maintain order
+		//Sort checked pages by pageNum and bookTitle to maintain order
 		checkedPages.sort((a, b) => {
 			if (a.bookTitle === b.bookTitle) {
 				return a.pageNum - b.pageNum;
@@ -251,7 +253,23 @@
 			return a.bookTitle.localeCompare(b.bookTitle);
 		});
 
-		const checkedResultsContent = checkedPages
+		//Javascript, using filter,map, or forEach automatically initializes page,index,and array
+		//if you add them as parameters. 1st position is the object, 2nd is the index, 3rd is original array
+		const uniqueCheckedPages = checkedPages.filter((page, index, array) => {
+			// If this is the first item → always keep it
+			if (index === 0) return true;
+
+			const previous = array[index - 1];
+
+			// Remove only if: same book AND same pageNum as the one right before
+			if (page.bookTitle === previous.bookTitle && page.pageNum === previous.pageNum) {
+				return false; // remove this duplicate
+			}
+
+			return true; // keep it
+		});
+
+		const checkedResultsContent = uniqueCheckedPages
 			.map((page) => `${page.bookTitle}, Page ${page.pageNum}: ${page.text}\n`)
 			.join('\n');
 
@@ -418,7 +436,7 @@
 		const idx = pagesReturned_pdfBookResults.indexOf(result);
 		//pagesReturned_pdfBookResults = pagesReturned_pdfBookResults.filter((r) => r !== result);
 		pagesReturned_pdfBookResults.splice(idx - 1, idx + 1);
-		console.log(pagesReturned_pdfBookResults.length);
+		//console.log(pagesReturned_pdfBookResults.length);
 	}
 </script>
 
@@ -512,9 +530,7 @@ bg-gradient-to-b p-1 [grid-template-areas:'routing_routing_routing'_'header_head
 		</div>
 	{:else}
 		<div class="mb-4 flex w-full justify-end [grid-area:pdfsubjects-dropdnlist]">
-			<div
-				class="total-count mr-20 h-auto w-auto rounded-md sm:ml-0 sm:h-10 sm:w-36"
-			>
+			<div class="total-count mr-20 h-auto w-auto rounded-md sm:ml-0 sm:h-10 sm:w-36">
 				<p
 					class="font-comic text-red m-0 w-full overflow-visible text-right !text-base font-light whitespace-nowrap sm:text-center
            sm:!text-lg md:!text-xl lg:!text-2xl"

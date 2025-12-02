@@ -15,10 +15,10 @@ let { result, ondelete, isChecked, oncheckchange, carouselGroup }: {
 	let simpleCarouselRef: any = $state(null);
 
 	function handleBlockClick() {
-		console.log('[PdfBlock] Click detected, isRowClicked:', isRowClicked, 'isExpanded:', isExpanded);
+		//console.log('[PdfBlock] Click detected, isRowClicked:', isRowClicked, 'isExpanded:', isExpanded);
 		isRowClicked = !isRowClicked;
 		isExpanded = !isExpanded;
-		console.log('[PdfBlock] After click - isRowClicked:', isRowClicked, 'isExpanded:', isExpanded);
+		//console.log('[PdfBlock] After click - isRowClicked:', isRowClicked, 'isExpanded:', isExpanded);
 	}
 
 	function handleDeleteDispatch() {
