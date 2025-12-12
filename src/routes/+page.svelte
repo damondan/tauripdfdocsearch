@@ -128,7 +128,6 @@
 	//in results. mySearchData, being json data, is taken in by mySearchData, which uses 2
 	//interfaces to configure with the json data. Lastly, it steps through the array to
 	//input the pdf attributes into creating a PdfBookResult object that is than stored into
-	//a pdfBooksAsResultObjects array.
 	function handleLoadPdfBlockData(data: ISearchData | string): void {
 		mySearchData = data;
 		//console.log('Received search results in parent(mySearchData):', mySearchData);
@@ -173,18 +172,16 @@
 							pagesReturned_pdfBookResults.push(null as any);
 						} else {
 							const { pageNum, text } = item;
-							//console.log("The page is ---------------------->>>>..." + text);
-							const sentence = findSentenceForPdfPage(text, $searchQueryWritable);
-							//console.log('Book title strings ' + bookTitle);
+							const cleanedText = cleanTextSpacing(text);
+							const sentence = findSentenceForPdfPage(cleanedText, $searchQueryWritable);
 							pagesReturned_pdfBookResults.push(
-								new PdfBookResult(bookTitle, pageNum, sentence, text)
+								new PdfBookResult(bookTitle, pageNum, sentence, cleanedText)
 							);
 						}
 					}
 				}
 			} else {
 				pagesReturned_pdfBookResults = [];
-				//console.log('clearing pdfBooksAsResultObjects - else is null');
 			}
 		} else {
 			alert('Search returned 0 for ' + $searchQueryWritable);
@@ -347,24 +344,24 @@
 	//The parent receives callback from PdfBlock -> onchange(result, checked);
 	//checkedResults is set with the proper array of PdfBookResult which has been checked
 	//in the Results tab.
-	function handleCheckboxChangeForPdfBlock(result: PdfBookResult, checked: boolean): void {
-		//console.log('[+page] IN handleCheckboxChangeForPdfBlock');
-		//console.log('[+page] result param:', result);
-		//console.log('[+page] checked param:', checked);
-		result.isChecked = checked;
-		//console.log('[+page] result.isChecked set to:', result.isChecked);
+	// function handleCheckboxChangeForPdfBlock(result: PdfBookResult, checked: boolean): void {
+	// 	//console.log('[+page] IN handleCheckboxChangeForPdfBlock');
+	// 	//console.log('[+page] result param:', result);
+	// 	//console.log('[+page] checked param:', checked);
+	// 	result.isChecked = checked;
+	// 	//console.log('[+page] result.isChecked set to:', result.isChecked);
 
-		if (checked) {
-			checkedResults = [...checkedResults, result];
-			//console.log('[+page] checkedResults adding ', checkedResults);
-		} else {
-			checkedResults = checkedResults.filter((r) => r !== result);
-			//console.log('[+page] checkedResults deleting ', checkedResults);
-		}
+	// 	if (checked) {
+	// 		checkedResults = [...checkedResults, result];
+	// 		//console.log('[+page] checkedResults adding ', checkedResults);
+	// 	} else {
+	// 		checkedResults = checkedResults.filter((r) => r !== result);
+	// 		//console.log('[+page] checkedResults deleting ', checkedResults);
+	// 	}
 
-		//console.log('[+page] Checked results:', checkedResults);
-		//console.log('[+page] Checked results length:', checkedResults.length);
-	}
+	// 	//console.log('[+page] Checked results:', checkedResults);
+	// 	//console.log('[+page] Checked results length:', checkedResults.length);
+	// }
 
 	//This checks all of the pdf book titles from the pdf tab.
 	//<input type="checkbox" id="checkall-id" bind:checked={isCheckAll}
