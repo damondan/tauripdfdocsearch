@@ -27,12 +27,8 @@
 	let checkedResultsGroup: PdfBookResult[] = $state([]);
 	let isCheckAllResults: boolean = $state(false);
 	let pdfLimit: number = 25;
-	// let totalCount = $derived(pagesReturned_pdfBookResults.filter((page,idx)=>idx % 3 ==1).length);
 	let totalCount = $derived(pagesReturned_pdfBookResults.length / 3);
-	// Store carousel groups: each group is [prevPage, matchPage, nextPage]
-	let carouselGroupsMap = $state(new Map<string, (PdfBookResult | null)[]>());
 
-	// Extract carousel group for a match result (matches are at indices 1, 4, 7...)
 	function getCarouselGroupForMatch(
 		allResults: (PdfBookResult | null)[],
 		matchIndex: number
@@ -172,10 +168,10 @@
 							pagesReturned_pdfBookResults.push(null as any);
 						} else {
 							const { pageNum, text } = item;
-							const cleanedText = cleanTextSpacing(text);
-							const sentence = findSentenceForPdfPage(cleanedText, $searchQueryWritable);
+							//const cleanedText = cleanTextSpacing(text);
+							const sentence = findSentenceForPdfPage(text, $searchQueryWritable);
 							pagesReturned_pdfBookResults.push(
-								new PdfBookResult(bookTitle, pageNum, sentence, cleanedText)
+								new PdfBookResult(bookTitle, pageNum, sentence, text)
 							);
 						}
 					}
@@ -295,24 +291,6 @@
 		}
 	}
 
-	//Used in handleLoadPdfDataFromPdfTab(event) to return the sentence within the page which
-	//holds the searchQuery term. The sentence is placed initially in the PdfBlock as a quick
-	//reference and in wanting to look further, can click on the block to open the full page.
-	// const findSentenceForPdfPage = (text: string, subject: string): string => {
-	// 	if (!text || !subject) return 'No page text or sentence found';
-
-	// 	const errSubject = subject.toLowerCase();
-	// 	const sub = `\\b${subject}\\b`;
-
-	// 	const sentenceRegex = new RegExp(`[^.?!]*${sub}[^.?!]*(?:[.?!]|$)`, 'gi');
-	// 	const match = sentenceRegex.exec(text);
-
-	// 	if (match) {
-	// 		return match[0].trim();
-	// 	} else {
-	// 		return `No sentence found containing "${errSubject}".`;
-	// 	}
-	// };
 	const findSentenceForPdfPage = (text: string, subject: string): string => {
 		if (!text || !subject) return 'No page text or sentence found';
 
@@ -320,7 +298,6 @@
 		// Word boundary regex for the search term
 		const sub = `\\b${subject}\\b`;
 
-		// Match a sentence containing the search term
 		const sentenceRegex = new RegExp(`[^.?!]*${sub}[^.?!]*(?:[.?!]|$)`, 'gi');
 		const match = sentenceRegex.exec(text);
 
@@ -336,32 +313,6 @@
 			return `No sentence found containing "${errSubject}".`;
 		}
 	};
-
-	//handleCheckboxChangeForPdfBlock is a callback for the +page.svelte component
-	//or parent to the PdfBlock component or child.
-	//Below -> <PdfBlock {result} ondelete={handleDeleteForPdfBlock}
-	//onchange={(result, checked) => handleCheckboxChangeForPdfBlock(result, checked)}
-	//The parent receives callback from PdfBlock -> onchange(result, checked);
-	//checkedResults is set with the proper array of PdfBookResult which has been checked
-	//in the Results tab.
-	// function handleCheckboxChangeForPdfBlock(result: PdfBookResult, checked: boolean): void {
-	// 	//console.log('[+page] IN handleCheckboxChangeForPdfBlock');
-	// 	//console.log('[+page] result param:', result);
-	// 	//console.log('[+page] checked param:', checked);
-	// 	result.isChecked = checked;
-	// 	//console.log('[+page] result.isChecked set to:', result.isChecked);
-
-	// 	if (checked) {
-	// 		checkedResults = [...checkedResults, result];
-	// 		//console.log('[+page] checkedResults adding ', checkedResults);
-	// 	} else {
-	// 		checkedResults = checkedResults.filter((r) => r !== result);
-	// 		//console.log('[+page] checkedResults deleting ', checkedResults);
-	// 	}
-
-	// 	//console.log('[+page] Checked results:', checkedResults);
-	// 	//console.log('[+page] Checked results length:', checkedResults.length);
-	// }
 
 	//This checks all of the pdf book titles from the pdf tab.
 	//<input type="checkbox" id="checkall-id" bind:checked={isCheckAll}
@@ -464,11 +415,6 @@ bg-gradient-to-b p-1 [grid-template-areas:'routing_routing_routing'_'header_head
 				class="font-comic shadow-soft mb-1 ml-5 cursor-pointer rounded-md border-[#333333] bg-[#3e228c] px-4
         py-2 !text-base text-white hover:bg-[#3206de] sm:!text-lg md:!text-xl lg:!text-2xl"
 			/>
-			<!-- <div class="total-count ml-5 h-auto w-auto rounded-md sm:ml-0 sm:h-10 sm:w-36">
-				<p
-					class="font-comic m-0 w-full overflow-visible text-left !text-base font-light whitespace-nowrap text-black sm:text-center
-           sm:!text-lg md:!text-xl lg:!text-2xl">Results {totalCount}</p>
-			</div> -->
 		</div>
 	{:else}
 		<div class="ml-[15%] flex items-end justify-start pb-2 [grid-area:download-r-checkall-buttons]">
