@@ -56,6 +56,6 @@
 		"@tauri-apps/plugin-dialog": "^2.4.2",
 		"@tauri-apps/plugin-fs": "^2.4.4",
 		"@tauri-apps/plugin-sql": "^2.3.0",
-		"better-sqlite3": "^12.4.1"
+		"better-sqlite3": "^12.5.0"
 	}
 }

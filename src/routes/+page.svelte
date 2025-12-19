@@ -8,10 +8,12 @@
 	import { PdfBookResult } from '$lib/classes/PdfBookResult';
 	import { searchQueryWritable } from '$lib/store';
 	import type { ISearchData } from '$lib';
+	import type { BookWithTOC } from '$lib/types';
 	import { page } from '$app/state';
 
 	let selectedSubjectString = $state('');
 	let pdfSubjectsStrings_Array: string[] = $state([]);
+	let pdfBooksWithTOC_Array: Writable<BookWithTOC[]> = writable([]);
 	let pdfBookStrings_Array: Writable<string[]> = writable([]);
 	let pdfBookCheckedStrings_Array: string[] = $state([]);
 	let mySearchData = $state<ISearchData | string>({
@@ -28,6 +30,7 @@
 	let isCheckAllResults: boolean = $state(false);
 	let pdfLimit: number = 25;
 	let totalCount = $derived(pagesReturned_pdfBookResults.length / 3);
+	let expandedBookTitle: string | null = $state(null);
 
 	function getCarouselGroupForMatch(
 		allResults: (PdfBookResult | null)[],
@@ -77,15 +80,18 @@
 	}
 
 	//handleLoadPdfTitlesFromSubject - takes a subject as argument and calls Tauri
-	//command to return just the titles of those pdf books by subject which
+	//command to return the titles and table of contents of those pdf books by subject which
 	//is the folder name.
+	// handleLoadPdfTitlesFromSubject(subject: string): Promise<void>
 	async function handleLoadPdfTitlesFromSubject(subject: string): Promise<void> {
 		try {
 			pagesReturned_pdfBookResults = [];
 			const { getBookTitlesBySubject } = await import('$lib/tauri-db');
-			const data: string[] = await getBookTitlesBySubject(subject);
+			const data: BookWithTOC[] = await getBookTitlesBySubject(subject);
 
-			pdfBookStrings_Array.set(data || []);
+			pdfBooksWithTOC_Array.set(data || []);
+			// Also maintain the string array for backward compatibility with existing code
+			pdfBookStrings_Array.set(data.map(book => book.bookTitle) || []);
 		} catch (error) {
 			console.error('Error fetching PDF titles:', error);
 		}
@@ -386,6 +392,16 @@
 		pagesReturned_pdfBookResults.splice(idx - 1, idx + 1);
 		//console.log(pagesReturned_pdfBookResults.length);
 	}
+
+	// toggleBookExpansion(bookTitle: string): void
+	// Toggles the expansion of a book's table of contents
+	function toggleBookExpansion(bookTitle: string): void {
+		if (expandedBookTitle === bookTitle) {
+			expandedBookTitle = null;
+		} else {
+			expandedBookTitle = bookTitle;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -520,24 +536,48 @@ bg-gradient-to-b p-1 [grid-template-areas:'routing_routing_routing'_'header_head
 			class="w3-container tab w-full max-w-full overflow-hidden"
 			style:display={activeTab === 'pdfs' ? 'block' : 'none'}
 		>
-			{#if $pdfBookStrings_Array.length > 0}
+			{#if $pdfBooksWithTOC_Array.length > 0}
 				<ul class="pdf-titles-list m-0 w-full list-none p-0 text-left">
-					{#each $pdfBookStrings_Array as title}
-						<li
-							class="pdf-title-block mb-2 flex w-full max-w-full items-start gap-2 border-b border-gray-300 pb-1 hover:bg-gray-100"
-						>
-							<input
-								type="checkbox"
-								id={title}
-								class="pdf-title-item mt-1 h-4 w-4 flex-shrink-0 scale-150 cursor-pointer"
-								bind:group={pdfBookCheckedStrings_Array}
-								value={title}
-							/>
-							<label
-								for={title}
-								class="pdf-title-label font-comic tracking-wider2 overflow-wrap-anywhere max-w-full min-w-0 flex-1 cursor-pointer overflow-hidden !text-base leading-tight font-bold break-words sm:!text-lg md:!text-xl lg:!text-2xl"
-								>{title}</label
+					{#each $pdfBooksWithTOC_Array as book}
+						<li class="pdf-title-block mb-2 w-full max-w-full border-b border-gray-300">
+							<!-- DEBUG: Book data -->
+							<!-- {JSON.stringify(book)} -->
+							<div
+								class="flex w-full max-w-full cursor-pointer items-start gap-2 pb-1 hover:bg-gray-100"
+								onclick={() => toggleBookExpansion(book.bookTitle)}
+								role="button"
+								tabindex="0"
+								style:color={expandedBookTitle === book.bookTitle ? 'blue' : 'inherit'}
 							>
+								<input
+									type="checkbox"
+									id={book.bookTitle}
+									class="pdf-title-item mt-1 h-4 w-4 flex-shrink-0 scale-150 cursor-pointer"
+									bind:group={pdfBookCheckedStrings_Array}
+									value={book.bookTitle}
+									onclick={(e) => e.stopPropagation()}
+								/>
+								<span
+									class="pdf-title-label font-comic tracking-wider2 overflow-wrap-anywhere max-w-full min-w-0 flex-1 overflow-hidden break-words !text-base font-bold leading-tight sm:!text-lg md:!text-xl lg:!text-2xl"
+									>{book.bookTitle}</span
+								>
+							</div>
+
+							<!-- Expandable Table of Contents -->
+							{#if expandedBookTitle === book.bookTitle && book.tableOfContents && book.tableOfContents.length > 0}
+								<div class="toc-expansion mt-2 rounded border border-gray-200 bg-gray-50 p-4">
+									<h3 class="font-comic mb-2 text-lg font-bold">Book Context</h3>
+									<ul class="m-0 list-none p-0">
+										{#each book.tableOfContents as entry}
+											<li class="font-comic py-1 text-sm sm:text-base">{entry}</li>
+										{/each}
+									</ul>
+								</div>
+							{:else if expandedBookTitle === book.bookTitle && (!book.tableOfContents || book.tableOfContents.length === 0)}
+								<div class="toc-expansion mt-2 rounded border border-gray-200 bg-gray-50 p-4">
+									<p class="font-comic italic text-gray-500">No table of contents available for this book.</p>
+								</div>
+							{/if}
 						</li>
 					{/each}
 				</ul>

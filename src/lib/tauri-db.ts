@@ -1,5 +1,5 @@
 import Database from '@tauri-apps/plugin-sql';
-import type { PageResult, SearchResponse, BookData, PageData } from './types';
+import type { PageResult, SearchResponse, BookData, PageData, BookWithTOC } from './types';
 
 let db: Database | null = null;
 
@@ -28,14 +28,18 @@ export async function getSubjects(): Promise<string[]> {
 
 /**
  * Get book titles for a specific subject
+ * getBookTitlesBySubject(subject: string): Promise<BookWithTOC[]>
  */
-export async function getBookTitlesBySubject(subject: string): Promise<string[]> {
+export async function getBookTitlesBySubject(subject: string): Promise<BookWithTOC[]> {
   const database = await getDb();
-  const result = await database.select<Array<{bookTitle: string}>>(
-    'SELECT bookTitle FROM books WHERE subject = $1 ORDER BY bookTitle',
+  const result = await database.select<Array<{bookTitle: string, tableOfContents: string | null}>>(
+    'SELECT bookTitle, tableOfContents FROM books WHERE subject = $1 ORDER BY bookTitle',
     [subject]
   );
-  return result.map(row => row.bookTitle);
+  return result.map(row => ({
+    bookTitle: row.bookTitle,
+    tableOfContents: row.tableOfContents ? JSON.parse(row.tableOfContents) : undefined
+  }));
 }
 
 /**
@@ -118,18 +122,22 @@ export async function searchPages(
 
 /**
  * Insert or update a book record
+ * upsertBook(bookData: BookData): Promise<void>
  */
 export async function upsertBook(bookData: BookData): Promise<void> {
   const database = await getDb();
   const now = new Date().toISOString();
   
+  const tocJson = bookData.tableOfContents ? JSON.stringify(bookData.tableOfContents) : null;
+  
   await database.execute(
-    `INSERT INTO books (subject, bookTitle, fileName, importedAt, updatedAt)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO books (subject, bookTitle, fileName, tableOfContents, importedAt, updatedAt)
+     VALUES ($1, $2, $3, $4, $5, $6)
      ON CONFLICT(subject, bookTitle) DO UPDATE SET
      fileName = excluded.fileName,
+     tableOfContents = excluded.tableOfContents,
      updatedAt = excluded.updatedAt`,
-    [bookData.subject, bookData.bookTitle, bookData.fileName, bookData.importedAt, now]
+    [bookData.subject, bookData.bookTitle, bookData.fileName, tocJson, bookData.importedAt, now]
   );
 }
 

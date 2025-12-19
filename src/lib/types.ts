@@ -2,7 +2,13 @@ export interface BookData {
   subject: string;
   bookTitle: string;
   fileName: string;
+  tableOfContents?: string[];
   importedAt: Date;
+}
+
+export interface BookWithTOC {
+  bookTitle: string;
+  tableOfContents?: string[];
 }
 
 export interface PageResult {
