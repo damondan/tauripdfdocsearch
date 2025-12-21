@@ -20,13 +20,7 @@
 		searchQueryWritable.set(searchQuery);
 
 		const normPdfTitles: string[] = [...pdfBookTitles];
-		// console.log(
-		// 	"normPdfTitles:",
-		// 	normPdfTitles,
-		// 	"length:",
-		// 	normPdfTitles.length,
-		// );
-
+	
 		// Check if both search query and PDFs are missing
 		if (!searchQuery.trim() && normPdfTitles.length == 0) {
 			//console.error("Both search query and PDFs are missing");
