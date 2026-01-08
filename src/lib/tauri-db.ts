@@ -4,11 +4,20 @@ import type { PageResult, SearchResponse, BookData, PageData, BookWithTOC } from
 let db: Database | null = null;
 
 async function getDb(): Promise<Database> {
-  if (!db) {
+ if (db) return db;
+
+  try {
     db = await Database.load('sqlite:pdfsearch.db');
     console.log('✅ Database connected successfully');
+    return db;
+  } catch (err) {
+    console.error('❌ Failed to load SQLite database', err);
+    throw new Error(
+      err instanceof Error
+        ? `Database initialization failed: ${err.message}`
+        : 'Database initialization failed due to an unknown error'
+    );
   }
-  return db;
 }
 
 /**

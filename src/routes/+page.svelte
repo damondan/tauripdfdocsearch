@@ -51,7 +51,7 @@
 			pdfSubjectsStrings_Array = await getSubjects();
 
 			if (pdfSubjectsStrings_Array.length > 0) {
-				//console.log('In onMount, subjects loaded:', pdfSubjectsStrings_Array);
+				console.log('In onMount, subjects loaded:', pdfSubjectsStrings_Array);
 				selectedSubjectString = pdfSubjectsStrings_Array[0]; // Set default to the first subject
 				// Automatically trigger the fetch for the first subject
 				handleLoadPdfTitlesFromSubject(selectedSubjectString);
@@ -200,7 +200,6 @@
 	//checkedResults is formatted below to set the downloaded text in a more readable manner.
 	async function handleDownloadPdfsForPdfBlock(): Promise<void> {
 		console.log('In handleDownloadPdfsForPdfBlock');
-		console.log('Checked Results length is ' + checkedResultsGroup.length);
 		if (checkedResultsGroup.length === 0) {
 			alert('Please select at least one PDF block to download');
 			return;
