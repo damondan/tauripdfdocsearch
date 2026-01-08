@@ -268,8 +268,8 @@
 		});
 
 		const checkedResultsContent = uniqueCheckedPages
-			.map((page) => `${page.bookTitle}, Page ${page.pageNum}: ${page.text}\n`)
-			.join('\n');
+			.map((page) => `${page.bookTitle}, Page ${page.pageNum}\n${page.text}`)
+			.join('\n\n');
 
 		try {
 			const { save } = await import('@tauri-apps/plugin-dialog');
@@ -388,7 +388,7 @@
 	function handleDeleteForPdfBlock(result: PdfBookResult): void {
 		const idx = pagesReturned_pdfBookResults.indexOf(result);
 		//pagesReturned_pdfBookResults = pagesReturned_pdfBookResults.filter((r) => r !== result);
-		pagesReturned_pdfBookResults.splice(idx - 1, idx + 1);
+		pagesReturned_pdfBookResults.splice(idx, 1);
 		//console.log(pagesReturned_pdfBookResults.length);
 	}
 
