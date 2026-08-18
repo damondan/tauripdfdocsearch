@@ -61,7 +61,7 @@ function getDbPath() {
     dataDir = path.join(process.env.APPDATA || path.join(homedir(), 'AppData', 'Roaming'), 'com.tauri.dev');
   } else {
     // Linux - Tauri uses .config in dev mode
-    dataDir = path.join(homedir(), '.config', 'com.tauri.dev');
+    dataDir = path.join(homedir(), '.config', 'com.damond.tauripdfdocsearch');
   }
   
   return path.join(dataDir, 'pdfsearch.db');

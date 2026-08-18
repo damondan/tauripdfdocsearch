@@ -386,11 +386,25 @@
 	);
 
 	function handleDeleteForPdfBlock(result: PdfBookResult): void {
-		const idx = pagesReturned_pdfBookResults.indexOf(result);
-		//pagesReturned_pdfBookResults = pagesReturned_pdfBookResults.filter((r) => r !== result);
-		pagesReturned_pdfBookResults.splice(idx, 1);
-		//console.log(pagesReturned_pdfBookResults.length);
-	}
+    const idx = pagesReturned_pdfBookResults.indexOf(result);
+
+    if (idx === -1) {
+        return;
+    }
+
+    // Current page should be at index 1, 4, 7, 10...
+    // Therefore the carousel starts one position before it.
+    const carouselStartIndex = idx - 1;
+
+    // Remove previous, current, and next
+    pagesReturned_pdfBookResults.splice(carouselStartIndex, 3);
+
+    // Rebuild the array containing only current/matched pages
+    pagesReturnedFromSearch_pdfBookResults =
+        pagesReturned_pdfBookResults.filter(
+            (page, idx) => idx % 3 === 1
+        );
+}
 
 	// toggleBookExpansion(bookTitle: string): void
 	// Toggles the expansion of a book's table of contents
