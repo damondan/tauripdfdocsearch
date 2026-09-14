@@ -91,7 +91,7 @@
 
 			pdfBooksWithTOC_Array.set(data || []);
 			// Also maintain the string array for backward compatibility with existing code
-			pdfBookStrings_Array.set(data.map(book => book.bookTitle) || []);
+			pdfBookStrings_Array.set(data.map((book) => book.bookTitle) || []);
 		} catch (error) {
 			console.error('Error fetching PDF titles:', error);
 		}
@@ -386,25 +386,20 @@
 	);
 
 	function handleDeleteForPdfBlock(result: PdfBookResult): void {
-    const idx = pagesReturned_pdfBookResults.indexOf(result);
+		const idx = pagesReturned_pdfBookResults.indexOf(result);
 
-    if (idx === -1) {
-        return;
-    }
+		if (idx === -1 || idx % 3 !== 1) {
+			return;
+		}
 
-    // Current page should be at index 1, 4, 7, 10...
-    // Therefore the carousel starts one position before it.
-    const carouselStartIndex = idx - 1;
+		// Remove [previous, matched, next]
+		pagesReturned_pdfBookResults.splice(idx - 1, 3);
 
-    // Remove previous, current, and next
-    pagesReturned_pdfBookResults.splice(carouselStartIndex, 3);
-
-    // Rebuild the array containing only current/matched pages
-    pagesReturnedFromSearch_pdfBookResults =
-        pagesReturned_pdfBookResults.filter(
-            (page, idx) => idx % 3 === 1
-        );
-}
+		// Rebuild list containing only matched/current pages
+		pagesReturnedFromSearch_pdfBookResults = pagesReturned_pdfBookResults.filter(
+			(page, index): page is PdfBookResult => index % 3 === 1 && page !== null
+		);
+	}
 
 	// toggleBookExpansion(bookTitle: string): void
 	// Toggles the expansion of a book's table of contents
@@ -571,7 +566,7 @@ bg-gradient-to-b p-1 [grid-template-areas:'routing_routing_routing'_'header_head
 									onclick={(e) => e.stopPropagation()}
 								/>
 								<span
-									class="pdf-title-label font-comic tracking-wider2 overflow-wrap-anywhere max-w-full min-w-0 flex-1 overflow-hidden break-words !text-base font-bold leading-tight sm:!text-lg md:!text-xl lg:!text-2xl"
+									class="pdf-title-label font-comic tracking-wider2 overflow-wrap-anywhere max-w-full min-w-0 flex-1 overflow-hidden !text-base leading-tight font-bold break-words sm:!text-lg md:!text-xl lg:!text-2xl"
 									>{book.bookTitle}</span
 								>
 							</div>
@@ -588,7 +583,9 @@ bg-gradient-to-b p-1 [grid-template-areas:'routing_routing_routing'_'header_head
 								</div>
 							{:else if expandedBookTitle === book.bookTitle && (!book.tableOfContents || book.tableOfContents.length === 0)}
 								<div class="toc-expansion mt-2 rounded border border-gray-200 bg-gray-50 p-4">
-									<p class="font-comic italic text-gray-500">No table of contents available for this book.</p>
+									<p class="font-comic text-gray-500 italic">
+										No table of contents available for this book.
+									</p>
 								</div>
 							{/if}
 						</li>
