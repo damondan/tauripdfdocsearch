@@ -551,7 +551,7 @@ bg-gradient-to-b p-1 [grid-template-areas:'routing_routing_routing'_'header_head
 							<!-- DEBUG: Book data -->
 							<!-- {JSON.stringify(book)} -->
 							<div
-								class="flex w-full max-w-full cursor-pointer items-start gap-2 pb-1 hover:bg-gray-100"
+								class="flex w-full max-w-full cursor-pointer items-start gap-2 pt-1 pb-1 hover:bg-gray-100"
 								onclick={() => toggleBookExpansion(book.bookTitle)}
 								role="button"
 								tabindex="0"
@@ -566,7 +566,9 @@ bg-gradient-to-b p-1 [grid-template-areas:'routing_routing_routing'_'header_head
 									onclick={(e) => e.stopPropagation()}
 								/>
 								<span
-									class="pdf-title-label font-comic tracking-wider2 overflow-wrap-anywhere max-w-full min-w-0 flex-1 overflow-hidden !text-base leading-tight font-bold break-words sm:!text-lg md:!text-xl lg:!text-2xl"
+									class="pdf-title-label font-comic pl-4 tracking-wider2 overflow-wrap-anywhere max-w-full min-w-0 
+									flex-1 overflow-hidden !text-base leading-tight font-bold break-words sm:!text-lg md:!text-xl lg:!text-2xl
+									"
 									>{book.bookTitle}</span
 								>
 							</div>
@@ -577,7 +579,7 @@ bg-gradient-to-b p-1 [grid-template-areas:'routing_routing_routing'_'header_head
 									<h3 class="font-comic mb-2 text-lg font-bold">Book Context</h3>
 									<ul class="m-0 list-none p-0">
 										{#each book.tableOfContents as entry}
-											<li class="font-comic py-1 text-sm sm:text-base">{entry}</li>
+											<li class="font-comic py-1 text-2xl">{entry}</li>
 										{/each}
 									</ul>
 								</div>
