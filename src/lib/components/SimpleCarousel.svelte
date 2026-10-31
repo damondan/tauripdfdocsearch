@@ -50,7 +50,7 @@
 				<div class="flex-1">
 					<span class="font-bold text-xl">Page {currentPage.pageNum}</span>
 					<p
-						class="m-0 break-words whitespace-normal overflow-visible !text-2xl font-comic mt-2"
+						class="m-0 break-words whitespace-normal overflow-visible !text-3xl font-comic mt-2"
 						style:color={getPageColor(currentPage.pageNum)}
 					>
 						{currentPage.pageText || 'No text available'}
