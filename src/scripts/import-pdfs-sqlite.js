@@ -13,7 +13,8 @@ import { homedir } from 'os';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-let db;
+/** @type {Database.Database | null} */
+let db = null;
 
 // Configure PDF.js for Node environment
 GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs'; 
@@ -343,7 +344,7 @@ async function importPdfs() {
     const response = await promptUser('Will this DB data be appended? (Y/N): ');
     
     // Connect to SQLite
-    await connect();
+    const database = await connect();
     
     // If user chose 'N', clear existing data
     if (response === 'N') {
@@ -353,6 +354,10 @@ async function importPdfs() {
     } else {
       console.log('\nInvalid response. Defaulting to append mode.');
     }
+
+    const findImportedBook = database.prepare(
+      'SELECT 1 FROM books WHERE subject = ? AND bookTitle = ?'
+    );
     
     // Get all directories (subjects)
     const baseDir = path.join(__dirname, '..', '..');
@@ -396,6 +401,10 @@ async function importPdfs() {
       // Process each PDF file
       for (const pdfFile of pdfFiles) {
         const bookTitle = path.basename(pdfFile, '.pdf');
+        if (response !== 'N' && findImportedBook.get(subject, bookTitle)) {
+          console.log(`Skipping already imported book: ${bookTitle}`);
+          continue;
+        }
         console.log(`\nProcessing book: ${bookTitle}`);
         
         // Process the PDF pages
@@ -419,6 +428,7 @@ async function importPdfs() {
           
           // Store all page texts for TOC extraction
           const allPageTexts = [];
+          let pageImportFailed = false;
           
           // Process each page
           for (let pageNum = 1; pageNum <= numPages; pageNum++) {
@@ -465,8 +475,14 @@ async function importPdfs() {
                 console.log(`Processed ${pageNum}/${numPages} pages of ${bookTitle}`);
               }
             } catch (error) {
+              pageImportFailed = true;
               console.error(`Error processing page ${pageNum} of ${bookTitle}:`, error);
             }
+          }
+
+          if (pageImportFailed) {
+            console.error(`Import incomplete for ${bookTitle}. It will be retried on the next import.`);
+            continue;
           }
           
           // Extract table of contents from the collected pages
